@@ -22,6 +22,8 @@ Build a responsive web dashboard that helps commuters track Bus 51B in real-time
 - **node-fetch** - HTTP client for API calls
 - **graphql-ws** - WebSocket support for subscriptions
 - **graphql-scalars** - Extended scalar types (DateTime, JSON)
+- **ioredis** - Redis client with automatic fallback to memory cache
+- **Zod** - Runtime validation for environment variables
 
 ### Frontend
 
@@ -150,6 +152,8 @@ NODE_ENV=development                       # Default: development
 POLLING_INTERVAL=15000                     # Default: 15000ms (15 seconds)
 ACTRANSITALERTS_POLLING_INTERVAL=60000     # Default: 60000ms (60 seconds)
 AC_TRANSIT_TOKEN=your_token_here           # Optional, only if using REST API
+REDIS_URL=redis://localhost:6379           # Optional, falls back to memory cache
+ENABLE_CACHE=true                          # Default: true
 
 # frontend/.env
 VITE_GRAPHQL_HTTP_URL=http://localhost:4000/graphql
@@ -252,6 +256,13 @@ const envSchema = z.object({
     POLLING_INTERVAL: z.coerce.number().min(5000).max(300000).default(15000),
     ACTRANSITALERTS_POLLING_INTERVAL: z.coerce.number().min(30000).max(600000).default(60000),
 
+    // Cache Configuration
+    REDIS_URL: z.string().optional(), // Optional - falls back to memory cache
+    ENABLE_CACHE: z
+        .enum(['true', 'false'])
+        .default('true')
+        .transform((val) => val === 'true'),
+
     // URLs with validation
     FRONTEND_URL: z.url().default('http://localhost:5173'),
     AC_TRANSIT_VEHICLE_POSITIONS_URL: z.url().default('...'),
@@ -340,9 +351,44 @@ where-is-51b/
 npm test
 ```
 
+## Caching Strategy
+
+The backend implements a **hybrid caching system** that automatically adapts to your environment:
+
+### How It Works
+
+1. **Production (with Redis)**: Uses Redis for distributed caching
+2. **Development (no Redis)**: Falls back to in-memory cache
+
+### Cache Implementation
+
+```typescript
+// backend/src/utils/cache.ts
+class HybridCache {
+    // Attempts Redis connection if REDIS_URL is set
+    // Falls back to Map-based memory cache if Redis unavailable
+    // Seamless operation in both environments
+}
+
+// Usage in services
+import { cache, CACHE_KEYS, CACHE_TTL } from './utils/cache.js';
+
+const data = await cache.get(CACHE_KEYS.VEHICLE_POSITIONS('51B'));
+if (!data) {
+    const fresh = await fetchFromAPI();
+    await cache.set(key, fresh, CACHE_TTL.VEHICLE_POSITIONS);
+}
+```
+
+### Cache TTLs
+
+- **Vehicle Positions**: 10 seconds (real-time data)
+- **Trip Updates**: 15 seconds (predictions)
+- **Service Alerts**: 5 minutes (rarely changes)
+
 ## Performance Considerations
 
-- **Caching**: Implement server-side caching to reduce API calls
+- **Caching**: Reduces AC Transit API calls
 - **Debouncing**: Limit subscription updates to prevent UI thrashing
 - **Lazy Loading**: Load map component only when needed
 - **Data Filtering**: Filter data server-side to reduce payload size

@@ -32,6 +32,15 @@ const envSchema = z.object({
 
     AC_TRANSIT_TOKEN: z.string().default(''),
 
+    // Redis Configuration
+    REDIS_URL: z.string().optional(),
+
+    // Cache Configuration
+    ENABLE_CACHE: z
+        .enum(['true', 'false'])
+        .default('true')
+        .transform((val) => val === 'true'),
+
     // AC Transit API Endpoints
     AC_TRANSIT_VEHICLE_POSITIONS_URL: z
         .url()
