@@ -1,0 +1,60 @@
+{
+    "name": "monorepo-starter-template",
+    "version": "1.0.0",
+    "description": "A monorepo starter template for Vite, TypeScript, and React frontend with empty backend",
+    "private": true,
+    "type": "module",
+    "workspaces": [
+        "frontend",
+        "backend"
+    ],
+    "scripts": {
+        "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+        "dev:frontend": "npm run dev --workspace=frontend",
+        "dev:backend": "npm run dev --workspace=backend",
+        "build": "npm run build:backend && npm run build:frontend",
+        "build:frontend": "npm run build --workspace=frontend",
+        "build:backend": "npm run build --workspace=backend",
+        "start": "npm run start --workspace=backend",
+        "lint": "eslint . --fix",
+        "lint:check": "eslint .",
+        "format": "prettier --write .",
+        "format:check": "prettier --check .",
+        "typecheck": "npm run typecheck:backend && npm run typecheck:frontend",
+        "typecheck:backend": "npm run typecheck --workspace=backend",
+        "typecheck:frontend": "npm run typecheck --workspace=frontend",
+        "prepare": "husky || true"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "devDependencies": {
+        "@typescript-eslint/eslint-plugin": "^8.43.0",
+        "@typescript-eslint/parser": "^8.43.0",
+        "concurrently": "^9.2.1",
+        "eslint": "^9.35.0",
+        "eslint-config-prettier": "^10.1.8",
+        "eslint-plugin-import": "^2.32.0",
+        "eslint-plugin-react": "^7.37.5",
+        "eslint-plugin-react-hooks": "^5.2.0",
+        "husky": "^9.1.7",
+        "lint-staged": "^16.1.6",
+        "prettier": "^3.6.2",
+        "tsc-files": "^1.1.4",
+        "typescript": "^5.9.2"
+    },
+    "lint-staged": {
+        "**/*.{ts,tsx}": [
+            "prettier --write",
+            "eslint --fix --max-warnings=0 --no-warn-ignored",
+            "tsc-files --noEmit"
+        ],
+        "**/*.{js,jsx}": [
+            "prettier --write",
+            "eslint --fix --max-warnings=0 --no-warn-ignored"
+        ],
+        "**/*.{css,md,json,yml,yaml}": [
+            "prettier --write"
+        ]
+    }
+}

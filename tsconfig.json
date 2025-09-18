@@ -1,0 +1,18 @@
+{
+    "compilerOptions": {
+        "target": "ES2023",
+        "module": "ES2022",
+        "lib": ["ES2023", "DOM"],
+        "jsx": "react-jsx",
+        "strict": true,
+        "esModuleInterop": true,
+        "skipLibCheck": true,
+        "forceConsistentCasingInFileNames": true,
+        "moduleResolution": "bundler",
+        "resolveJsonModule": true,
+        "noEmit": true,
+        "allowImportingTsExtensions": true
+    },
+    "include": ["frontend/src/**/*", "backend/src/**/*"],
+    "exclude": ["node_modules", "**/dist", "**/build"]
+}
