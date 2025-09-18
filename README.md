@@ -100,26 +100,22 @@ Build a responsive web dashboard that helps commuters track Bus 51B in real-time
 ### Data Sources
 
 1. **GTFS-Realtime Feeds** (Binary Protobuf)
-    - Vehicle Positions: `https://api.actransit.org/transit/gtfs-realtime/vehicle-positions`
-    - Trip Updates: `https://api.actransit.org/transit/gtfs-realtime/trip-updates`
-    - Service Alerts: `https://api.actransit.org/transit/gtfs-realtime/service-alerts`
+    - Vehicle Positions: `https://api.actransit.org/transit/gtfsrt/vehicles`
+    - Trip Updates: `https://api.actransit.org/transit/gtfsrt/tripupdates`
+    - Service Alerts: `https://api.actransit.org/transit/gtfsrt/alerts`
 
 2. **GTFS Static** (ZIP file with CSVs)
     - Routes, stops, stop times, shapes
     - Updated ~3 times per year
 
-3. **REST API** (Requires registration)
-    - More granular queries
-    - JSON responses
-    - Token required: `?token=YOUR_TOKEN`
+### Implementation Notes
 
-### Polling Strategy
+- **No Route Filtering**: AC Transit API returns all routes - filtering happens in backend
+- **Timestamp Format**: Uses Long (64-bit integers) from protobuf, converted to Date objects
+- **Direction**: `directionId` 0 = Outbound, 1 = Inbound
+- **Multilingual Alerts**: Alerts include Spanish/Chinese translations separated by `---`
 
-- **Frequency**: Every 15-30 seconds (matches AC Transit update rate)
-- **Caching**: Store latest data to reduce API calls
-- **Error Handling**: Exponential backoff on failures
-
-## 🚀 Getting Started
+## Getting Started
 
 ### Prerequisites
 
@@ -143,15 +139,17 @@ cd where-is-51b
 npm install
 ```
 
-4. Set up environment variables
+3. Set up environment variables
 
 ```bash
-# backend/.env (optional - sensible defaults are provided)
+# backend/.env
+AC_TRANSIT_TOKEN=your_token_here           # REQUIRED - Get from AC Transit Developer Portal
+
+# Optional - sensible defaults are provided
 PORT=4000                                  # Default: 4000
 NODE_ENV=development                       # Default: development
 POLLING_INTERVAL=15000                     # Default: 15000ms (15 seconds)
 ACTRANSITALERTS_POLLING_INTERVAL=60000     # Default: 60000ms (60 seconds)
-AC_TRANSIT_TOKEN=your_token_here           # Optional, only if using REST API
 REDIS_URL=redis://localhost:6379           # Optional, falls back to memory cache
 ENABLE_CACHE=true                          # Default: true
 
@@ -162,6 +160,14 @@ VITE_GRAPHQL_WS_URL=ws://localhost:4000/graphql
 
 > **Note**: The backend will validate all environment variables on startup using Zod.
 > If validation fails, you'll see clear error messages indicating which variables are misconfigured.
+
+4. Test the AC Transit API connection
+
+```bash
+cd backend
+npx tsx src/services/testFetch.ts  # Test raw API fetching
+npx tsx src/services/testParser.ts # Test data parsing
+```
 
 5. Start development servers concurrently
 
@@ -201,7 +207,6 @@ type Arrival {
     departureTime: DateTime!
     minutesAway: Int!
     isOutbound: Boolean!
-    headsign: String
 }
 
 type ACTransitAlert {
@@ -295,6 +300,36 @@ const isDev = config.NODE_ENV === 'development'; // boolean
 3. Use the exported config object throughout the codebase
 4. The app will fail fast on startup if validation fails
 
+## Service Architecture
+
+The backend implements a clean layered architecture:
+
+```
+AC Transit GTFS-RT API
+         │
+         ▼
+┌─────────────────────┐
+│  acTransit.ts       │ ← Service Layer
+│  - Fetches binary   │
+│  - Handles auth     │
+│  - Basic filtering  │
+└─────────┬───────────┘
+         ▼
+┌─────────────────────┐
+│  gtfsParser.ts      │ ← Parser Layer
+│  - Type transforms  │
+│  - English extract  │
+│  - Schema mapping   │
+└─────────┬───────────┘
+         ▼
+┌─────────────────────┐
+│  GraphQL Resolvers  │ ← API Layer
+│  - Query handling   │
+│  - Subscriptions    │
+│  - Caching          │
+└─────────────────────┘
+```
+
 ## Project Structure
 
 ```
@@ -316,8 +351,8 @@ where-is-51b/
 │   │   │       ├── acTransitAlert.graphql
 │   │   │       └── acTransitAlert.resolver.ts
 │   │   ├── services/
-│   │   │   ├── acTransit.ts   # AC Transit API client
-│   │   │   └── gtfsParser.ts  # GTFS protobuf parser
+│   │   │   ├── acTransit.ts   # AC Transit API client (fetches GTFS-RT feeds)
+│   │   │   └── gtfsParser.ts  # GTFS parser (transforms protobuf to GraphQL types)
 │   │   └── utils/
 │   │       ├── config.ts      # Zod env validation & config
 │   │       └── cache.ts       # Caching logic

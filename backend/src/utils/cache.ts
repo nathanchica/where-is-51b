@@ -102,9 +102,10 @@ export const cache = new HybridCache();
 
 // Cache key generators
 export const CACHE_KEYS = {
-    VEHICLE_POSITIONS: (routeId: string) => `bus:${routeId}`,
-    TRIP_UPDATES: (routeId: string, stopIds?: string[]) => `trips:${routeId}:${stopIds?.sort().join(',') || 'all'}`,
-    SERVICE_ALERTS: (routeId?: string) => `alerts:${routeId || 'all'}`,
+    VEHICLE_POSITIONS: (routeId: string = 'all') => `bus:${routeId}`,
+    TRIP_UPDATES: (routeId: string = 'all', stopIds?: string[]) =>
+        `trips:${routeId}:${stopIds?.sort().join(',') || 'all'}`,
+    SERVICE_ALERTS: (routeId: string = 'all') => `alerts:${routeId}`,
 };
 
 // Cache TTL in seconds

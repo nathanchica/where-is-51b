@@ -66,11 +66,6 @@ type Arrival {
     True if bus is heading outbound (away from downtown)
     """
     isOutbound: Boolean!
-
-    """
-    Headsign text displayed on the bus
-    """
-    headsign: String
 }
 
 extend type Query {
