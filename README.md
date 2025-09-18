@@ -21,6 +21,7 @@ Build a responsive web dashboard that helps commuters track Bus 51B in real-time
 - **gtfs-realtime-bindings** - For parsing AC Transit's protobuf data
 - **node-fetch** - HTTP client for API calls
 - **graphql-ws** - WebSocket support for subscriptions
+- **graphql-scalars** - Extended scalar types (DateTime, JSON)
 
 ### Frontend
 
@@ -165,12 +166,14 @@ npm run dev
 type BusPosition {
     vehicleId: String!
     routeId: String!
-    directionId: Int!
+    isOutbound: Boolean! # True if heading away from downtown
     latitude: Float!
     longitude: Float!
     heading: Float
     speed: Float
-    timestamp: Int!
+    timestamp: DateTime! # ISO 8601 DateTime
+    tripId: String
+    stopSequence: Int
 }
 
 type StopPrediction {
@@ -178,24 +181,49 @@ type StopPrediction {
     stopName: String!
     direction: String!
     arrivals: [Arrival!]!
+    latitude: Float!
+    longitude: Float!
 }
 
 type Arrival {
     vehicleId: String!
     tripId: String!
-    arrivalTime: Int!
-    departureTime: Int!
+    arrivalTime: DateTime!
+    departureTime: DateTime!
     minutesAway: Int!
+    isOutbound: Boolean!
+    headsign: String
+}
+
+type ACTransitAlert {
+    id: String!
+    headerText: String!
+    descriptionText: String
+    severity: ACTransitAlertSeverity!
+    startTime: DateTime
+    endTime: DateTime
+    affectedRoutes: [String!]!
+    affectedStops: [String!]!
+}
+
+enum ACTransitAlertSeverity {
+    INFO
+    WARNING
+    SEVERE
 }
 
 type Query {
+    health: String!
     busPositions(routeId: String!): [BusPosition!]!
     stopPredictions(routeId: String!, stopIds: [String!]!): [StopPrediction!]!
+    acTransitAlerts(routeId: String): [ACTransitAlert!]!
 }
 
 type Subscription {
+    ping: String!
     busPositions(routeId: String!): [BusPosition!]!
     stopPredictions(routeId: String!, stopIds: [String!]!): [StopPrediction!]!
+    acTransitAlerts(routeId: String): [ACTransitAlert!]!
 }
 ```
 
@@ -206,14 +234,26 @@ where-is-51b/
 ├── backend/
 │   ├── src/
 │   │   ├── index.ts           # Server entry point
-│   │   ├── schema.ts          # GraphQL schema
-│   │   ├── resolvers.ts       # GraphQL resolvers
+│   │   ├── schema/           # GraphQL schema definitions
+│   │   │   ├── root/
+│   │   │   │   ├── root.graphql
+│   │   │   │   └── root.resolver.ts
+│   │   │   ├── busPosition/
+│   │   │   │   ├── busPosition.graphql
+│   │   │   │   └── busPosition.resolver.ts
+│   │   │   ├── stopPrediction/
+│   │   │   │   ├── stopPrediction.graphql
+│   │   │   │   └── stopPrediction.resolver.ts
+│   │   │   └── acTransitAlert/
+│   │   │       ├── acTransitAlert.graphql
+│   │   │       └── acTransitAlert.resolver.ts
 │   │   ├── services/
 │   │   │   ├── acTransit.ts   # AC Transit API client
 │   │   │   └── gtfsParser.ts  # GTFS protobuf parser
 │   │   └── utils/
 │   │       └── cache.ts       # Caching logic
 │   ├── package.json
+│   ├── tsconfig.json
 │   └── .env
 ├── frontend/
 │   ├── src/

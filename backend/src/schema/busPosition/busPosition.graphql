@@ -1,0 +1,78 @@
+"""
+Represents a real-time bus position on the AC Transit network
+"""
+type BusPosition {
+    """
+    Unique identifier for the vehicle
+    """
+    vehicleId: String!
+
+    """
+    Route identifier (e.g., "51B")
+    """
+    routeId: String!
+
+    """
+    True if bus is heading outbound (away from downtown), false if inbound
+    """
+    isOutbound: Boolean!
+
+    """
+    Current latitude position of the bus
+    """
+    latitude: Float!
+
+    """
+    Current longitude position of the bus
+    """
+    longitude: Float!
+
+    """
+    Compass heading in degrees (0-360)
+    """
+    heading: Float
+
+    """
+    Current speed in meters per second
+    """
+    speed: Float
+
+    """
+    DateTime when this position was recorded
+    """
+    timestamp: DateTime!
+
+    """
+    Trip identifier from GTFS
+    """
+    tripId: String
+
+    """
+    Current stop sequence in the trip
+    """
+    stopSequence: Int
+}
+
+extend type Query {
+    """
+    Get current positions of all buses for a specific route
+    """
+    busPositions(
+        """
+        Route ID to filter by (e.g., "51B")
+        """
+        routeId: String!
+    ): [BusPosition!]!
+}
+
+extend type Subscription {
+    """
+    Subscribe to real-time bus position updates for a specific route
+    """
+    busPositions(
+        """
+        Route ID to filter by (e.g., "51B")
+        """
+        routeId: String!
+    ): [BusPosition!]!
+}

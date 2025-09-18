@@ -1,0 +1,88 @@
+"""
+Service alert from AC Transit's GTFS-RT feed
+"""
+type ACTransitAlert {
+    """
+    Unique identifier for the alert
+    """
+    id: String!
+
+    """
+    Alert header text
+    """
+    headerText: String!
+
+    """
+    Full description of the alert
+    """
+    descriptionText: String
+
+    """
+    Severity level of the alert
+    """
+    severity: ACTransitAlertSeverity!
+
+    """
+    When the alert started
+    """
+    startTime: DateTime
+
+    """
+    When the alert ends (null if ongoing)
+    """
+    endTime: DateTime
+
+    """
+    Routes affected by this alert
+    """
+    affectedRoutes: [String!]!
+
+    """
+    Stops affected by this alert
+    """
+    affectedStops: [String!]!
+}
+
+"""
+Severity levels for AC Transit service alerts
+"""
+enum ACTransitAlertSeverity {
+    """
+    Informational message
+    """
+    INFO
+
+    """
+    Warning about potential delays
+    """
+    WARNING
+
+    """
+    Severe service disruption
+    """
+    SEVERE
+}
+
+extend type Query {
+    """
+    Get current AC Transit service alerts for a route
+    """
+    acTransitAlerts(
+        """
+        Optional route ID to filter alerts
+        """
+        routeId: String
+    ): [ACTransitAlert!]!
+}
+
+extend type Subscription {
+    """
+    Subscribe to real-time AC Transit service alerts
+    """
+    acTransitAlerts(
+        """
+        Optional route ID to filter alerts
+        """
+        routeId: String
+    ): [ACTransitAlert!]!
+}

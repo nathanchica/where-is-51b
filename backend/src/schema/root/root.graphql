@@ -1,0 +1,33 @@
+"""
+Root schema for the Where is Bus 51B GraphQL API
+"""
+
+"""
+ISO 8601 DateTime scalar type
+"""
+scalar DateTime
+
+"""
+JSON scalar type for arbitrary JSON data
+"""
+scalar JSON
+
+"""
+Root query type
+"""
+type Query {
+    """
+    Health check endpoint
+    """
+    health: String!
+}
+
+"""
+Root subscription type for real-time updates
+"""
+type Subscription {
+    """
+    Keep-alive ping sent every 30 seconds
+    """
+    ping: String!
+}
