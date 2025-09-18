@@ -35,8 +35,40 @@ export default [
             globals: {
                 console: 'readonly',
                 process: 'readonly',
+                Buffer: 'readonly',
+                __dirname: 'readonly',
+                __filename: 'readonly',
+                exports: 'writable',
+                module: 'writable',
+                require: 'readonly',
+                global: 'readonly',
                 document: 'readonly',
                 window: 'readonly',
+                navigator: 'readonly',
+                fetch: 'readonly',
+                URL: 'readonly',
+                URLSearchParams: 'readonly',
+                RequestInit: 'readonly',
+                Response: 'readonly',
+                Request: 'readonly',
+                Headers: 'readonly',
+                React: 'readonly',
+                // DOM types
+                HTMLDivElement: 'readonly',
+                HTMLInputElement: 'readonly',
+                HTMLElement: 'readonly',
+                Element: 'readonly',
+                KeyboardEvent: 'readonly',
+                // Timer functions
+                setTimeout: 'readonly',
+                clearTimeout: 'readonly',
+                setInterval: 'readonly',
+                clearInterval: 'readonly',
+                // Storage
+                localStorage: 'readonly',
+                sessionStorage: 'readonly',
+                // Node.js types
+                NodeJS: 'readonly',
             },
         },
         plugins: {
@@ -51,10 +83,19 @@ export default [
             'react/react-in-jsx-scope': 'off',
             'react/prop-types': 'off',
             '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
-            'no-console': ['warn', { allow: ['warn', 'error'] }],
+            'no-console': 'off',
         },
         settings: {
             react: { version: 'detect' },
+        },
+    },
+
+    // Backend-specific overrides
+    {
+        files: ['backend/**/*.ts'],
+        rules: {
+            'react-hooks/rules-of-hooks': 'off',
+            'react-hooks/exhaustive-deps': 'off',
         },
     },
 ];

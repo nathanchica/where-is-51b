@@ -14,14 +14,18 @@
     "author": "",
     "license": "ISC",
     "dependencies": {
+        "@graphql-tools/load-files": "^7.0.1",
+        "@graphql-tools/merge": "^9.1.1",
         "@graphql-tools/schema": "^10.0.25",
+        "@graphql-yoga/plugin-graphql-sse": "^3.15.2",
         "dotenv": "^17.2.2",
         "graphql": "^16.11.0",
         "graphql-scalars": "^1.24.2",
         "graphql-ws": "^6.0.6",
         "graphql-yoga": "^5.15.2",
         "gtfs-realtime-bindings": "^1.1.1",
-        "node-fetch": "^3.3.2"
+        "node-fetch": "^3.3.2",
+        "zod": "^4.1.9"
     },
     "devDependencies": {
         "@types/node": "^24.5.2",
