@@ -1,8 +1,4 @@
 """
-Root schema for the Where is Bus 51B GraphQL API
-"""
-
-"""
 ISO 8601 DateTime scalar type
 """
 scalar DateTime

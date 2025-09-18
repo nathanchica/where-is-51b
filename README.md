@@ -144,15 +144,20 @@ npm install
 4. Set up environment variables
 
 ```bash
-# backend/.env
-PORT=4000
-POLLING_INTERVAL=15000
-AC_TRANSIT_TOKEN=your_token_here # Optional, only if using REST API
+# backend/.env (optional - sensible defaults are provided)
+PORT=4000                                  # Default: 4000
+NODE_ENV=development                       # Default: development
+POLLING_INTERVAL=15000                     # Default: 15000ms (15 seconds)
+ACTRANSITALERTS_POLLING_INTERVAL=60000     # Default: 60000ms (60 seconds)
+AC_TRANSIT_TOKEN=your_token_here           # Optional, only if using REST API
 
 # frontend/.env
 VITE_GRAPHQL_HTTP_URL=http://localhost:4000/graphql
 VITE_GRAPHQL_WS_URL=ws://localhost:4000/graphql
 ```
+
+> **Note**: The backend will validate all environment variables on startup using Zod.
+> If validation fails, you'll see clear error messages indicating which variables are misconfigured.
 
 5. Start development servers concurrently
 
@@ -227,6 +232,58 @@ type Subscription {
 }
 ```
 
+## Environment Variable Management
+
+The backend uses **Zod** for runtime validation and type-safe environment variables. This ensures configuration errors are caught at startup, not runtime.
+
+### Configuration Convention
+
+All environment variables are defined and validated in `backend/src/utils/config.ts`:
+
+```typescript
+// backend/src/utils/config.ts
+const envSchema = z.object({
+    // Server Configuration
+    PORT: z.coerce.number().min(1).max(65535).default(4000),
+    NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+
+    // API Configuration
+    AC_TRANSIT_TOKEN: z.string().default(''),
+    POLLING_INTERVAL: z.coerce.number().min(5000).max(300000).default(15000),
+    ACTRANSITALERTS_POLLING_INTERVAL: z.coerce.number().min(30000).max(600000).default(60000),
+
+    // URLs with validation
+    FRONTEND_URL: z.url().default('http://localhost:5173'),
+    AC_TRANSIT_VEHICLE_POSITIONS_URL: z.url().default('...'),
+});
+```
+
+### Key Features
+
+- **Type Safety**: Full TypeScript support with exported `Env` type
+- **Runtime Validation**: Validates all env vars on startup
+- **Automatic Coercion**: Converts string env vars to proper types (numbers, booleans)
+- **Clear Error Messages**: Shows exactly which env vars are misconfigured
+- **Sensible Defaults**: Most variables have defaults for development
+
+### Usage
+
+```typescript
+// Import the validated config
+import config from './utils/config.js';
+
+// Use with full type safety
+const port = config.PORT; // number
+const isDev = config.NODE_ENV === 'development'; // boolean
+```
+
+### Adding New Environment Variables
+
+1. Add the variable to the schema in `backend/src/utils/config.ts`
+2. Define validation rules and defaults
+3. Use the exported config object throughout the codebase
+4. The app will fail fast on startup if validation fails
+
 ## Project Structure
 
 ```
@@ -251,6 +308,7 @@ where-is-51b/
 │   │   │   ├── acTransit.ts   # AC Transit API client
 │   │   │   └── gtfsParser.ts  # GTFS protobuf parser
 │   │   └── utils/
+│   │       ├── config.ts      # Zod env validation & config
 │   │       └── cache.ts       # Caching logic
 │   ├── package.json
 │   ├── tsconfig.json
