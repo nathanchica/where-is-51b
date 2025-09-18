@@ -2,6 +2,7 @@ import fetch from 'node-fetch';
 import GtfsRealtimeBindings from 'gtfs-realtime-bindings';
 import type { transit_realtime } from 'gtfs-realtime-bindings';
 import config from '../utils/config.js';
+import { getCachedOrFetch, CACHE_KEYS, CACHE_TTL } from '../utils/cache.js';
 
 // Use the protobuf decoder from the default export
 const { transit_realtime: rt } = GtfsRealtimeBindings;
@@ -65,9 +66,9 @@ class ACTransitService {
     }
 
     /**
-     * Fetch vehicle positions for all AC Transit buses
+     * Fetch vehicle positions for all AC Transit buses (raw feed, uncached)
      */
-    async fetchVehiclePositions(): Promise<IFeedMessage> {
+    private async fetchVehiclePositionsRaw(): Promise<IFeedMessage> {
         const feed = await this.fetchGTFSFeed(this.vehiclePositionsUrl);
 
         // Log some basic info about the feed
@@ -79,7 +80,7 @@ class ACTransitService {
         const vehicleEntities = (feed.entity || []).filter((e) => e.vehicle);
         console.log(`Vehicle position entities: ${vehicleEntities.length}`);
 
-        if (vehicleEntities.length > 0) {
+        if (vehicleEntities.length > 0 && config.NODE_ENV === 'development') {
             console.log('\nSample vehicle data (first 3):');
             vehicleEntities.slice(0, 3).forEach((entity, index) => {
                 const vehicle = entity.vehicle!;
@@ -98,9 +99,33 @@ class ACTransitService {
     }
 
     /**
-     * Fetch trip updates (arrival predictions)
+     * Fetch vehicle positions with caching
+     * Cache key includes 'all' since this fetches all routes
      */
-    async fetchTripUpdates(): Promise<IFeedMessage> {
+    async fetchVehiclePositions(): Promise<IFeedMessage> {
+        // Use cache for all vehicle positions
+        return getCachedOrFetch(
+            CACHE_KEYS.VEHICLE_POSITIONS('all'),
+            () => this.fetchVehiclePositionsRaw(),
+            CACHE_TTL.VEHICLE_POSITIONS
+        );
+    }
+
+    /**
+     * Fetch vehicle positions for a specific route with caching
+     */
+    async fetchVehiclePositionsForRoute(routeId: string): Promise<IFeedMessage> {
+        // Get all positions (will use cache if available)
+        const allPositions = await this.fetchVehiclePositions();
+
+        // Filter for the specific route
+        return this.filterByRoute(allPositions, routeId);
+    }
+
+    /**
+     * Fetch trip updates (arrival predictions) - raw, uncached
+     */
+    private async fetchTripUpdatesRaw(): Promise<IFeedMessage> {
         console.log('\nFetching trip updates...');
         const feed = await this.fetchGTFSFeed(this.tripUpdatesUrl);
 
@@ -108,25 +133,27 @@ class ACTransitService {
         console.log(`Feed timestamp: ${new Date(timestamp * 1000).toISOString()}`);
         console.log(`Number of entities: ${feed.entity?.length || 0}`);
 
-        // Log sample trip update
-        const tripUpdateEntities = (feed.entity || []).filter((e) => e.tripUpdate);
-        console.log(`Trip update entities: ${tripUpdateEntities.length}`);
+        // Log sample trip update in development
+        if (config.NODE_ENV === 'development') {
+            const tripUpdateEntities = (feed.entity || []).filter((e) => e.tripUpdate);
+            console.log(`Trip update entities: ${tripUpdateEntities.length}`);
 
-        if (tripUpdateEntities.length > 0) {
-            console.log('\nSample trip update (first one):');
-            const firstUpdate = tripUpdateEntities[0];
-            const tripUpdate = firstUpdate.tripUpdate!;
-            console.log(`  Trip ID: ${tripUpdate.trip.tripId}`);
-            console.log(`  Route ID: ${tripUpdate.trip.routeId}`);
-            console.log(`  Stop time updates: ${tripUpdate.stopTimeUpdate?.length || 0}`);
+            if (tripUpdateEntities.length > 0) {
+                console.log('\nSample trip update (first one):');
+                const firstUpdate = tripUpdateEntities[0];
+                const tripUpdate = firstUpdate.tripUpdate!;
+                console.log(`  Trip ID: ${tripUpdate.trip.tripId}`);
+                console.log(`  Route ID: ${tripUpdate.trip.routeId}`);
+                console.log(`  Stop time updates: ${tripUpdate.stopTimeUpdate?.length || 0}`);
 
-            if (tripUpdate.stopTimeUpdate && tripUpdate.stopTimeUpdate.length > 0) {
-                const firstStop = tripUpdate.stopTimeUpdate[0];
-                console.log(`  First stop:`);
-                console.log(`    Stop ID: ${firstStop.stopId}`);
-                console.log(
-                    `    Arrival: ${firstStop.arrival?.time ? new Date(Number(firstStop.arrival.time) * 1000).toISOString() : 'N/A'}`
-                );
+                if (tripUpdate.stopTimeUpdate && tripUpdate.stopTimeUpdate.length > 0) {
+                    const firstStop = tripUpdate.stopTimeUpdate[0];
+                    console.log(`  First stop:`);
+                    console.log(`    Stop ID: ${firstStop.stopId}`);
+                    console.log(
+                        `    Arrival: ${firstStop.arrival?.time ? new Date(Number(firstStop.arrival.time) * 1000).toISOString() : 'N/A'}`
+                    );
+                }
             }
         }
 
@@ -134,9 +161,31 @@ class ACTransitService {
     }
 
     /**
-     * Fetch service alerts
+     * Fetch trip updates with caching
      */
-    async fetchServiceAlerts(): Promise<IFeedMessage> {
+    async fetchTripUpdates(): Promise<IFeedMessage> {
+        return getCachedOrFetch(
+            CACHE_KEYS.TRIP_UPDATES('all'),
+            () => this.fetchTripUpdatesRaw(),
+            CACHE_TTL.TRIP_UPDATES
+        );
+    }
+
+    /**
+     * Fetch trip updates for a specific route with caching
+     */
+    async fetchTripUpdatesForRoute(routeId: string): Promise<IFeedMessage> {
+        // Get all trip updates (will use cache if available)
+        const allUpdates = await this.fetchTripUpdates();
+
+        // Filter for the specific route
+        return this.filterByRoute(allUpdates, routeId);
+    }
+
+    /**
+     * Fetch service alerts - raw, uncached
+     */
+    private async fetchServiceAlertsRaw(): Promise<IFeedMessage> {
         console.log('\nFetching service alerts...');
         const feed = await this.fetchGTFSFeed(this.serviceAlertsUrl);
 
@@ -144,22 +193,33 @@ class ACTransitService {
         console.log(`Feed timestamp: ${new Date(timestamp * 1000).toISOString()}`);
         console.log(`Number of entities: ${feed.entity?.length || 0}`);
 
-        // Log alerts
+        // Log alerts count
         const alertEntities = (feed.entity || []).filter((e) => e.alert);
         console.log(`Alert entities: ${alertEntities.length}`);
 
-        // if (alertEntities.length > 0) {
-        //     console.log('\nAlerts:');
-        //     alertEntities.forEach((entity, index) => {
-        //         const alert = entity.alert!;
-        //         console.log(`\n  Alert ${index + 1}:`);
-        //         console.log(`    Header: ${alert.headerText?.translation?.[0]?.text || 'N/A'}`);
-        //         console.log(`    Description: ${alert.descriptionText?.translation?.[0]?.text || 'N/A'}`);
-        //         console.log(`    Affected routes: ${alert.informedEntity?.map((e) => e.routeId).filter(Boolean).join(', ') || 'N/A'}`);
-        //     });
-        // }
-
         return feed;
+    }
+
+    /**
+     * Fetch service alerts with caching
+     */
+    async fetchServiceAlerts(): Promise<IFeedMessage> {
+        return getCachedOrFetch(
+            CACHE_KEYS.SERVICE_ALERTS(),
+            () => this.fetchServiceAlertsRaw(),
+            CACHE_TTL.SERVICE_ALERTS
+        );
+    }
+
+    /**
+     * Fetch service alerts for a specific route with caching
+     */
+    async fetchServiceAlertsForRoute(routeId: string): Promise<IFeedMessage> {
+        // Get all alerts (will use cache if available)
+        const allAlerts = await this.fetchServiceAlerts();
+
+        // Filter for the specific route
+        return this.filterByRoute(allAlerts, routeId);
     }
 
     /**

@@ -1,4 +1,4 @@
-import type { transit_realtime } from 'gtfs-realtime-bindings';
+import { transit_realtime } from 'gtfs-realtime-bindings';
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -39,8 +39,8 @@ export interface ParsedStopPrediction {
     stopName: string;
     direction: string;
     arrivals: ParsedArrival[];
-    latitude: number;
-    longitude: number;
+    latitude: number | null;
+    longitude: number | null;
 }
 
 export interface ParsedArrival {
@@ -85,12 +85,12 @@ class GTFSParser {
     private mapSeverity(severity?: transit_realtime.Alert.SeverityLevel | null): 'INFO' | 'WARNING' | 'SEVERE' {
         // GTFS-RT severity values: UNKNOWN_SEVERITY = 1, INFO = 2, WARNING = 3, SEVERE = 4
         switch (severity) {
-            case 4: // SEVERE
+            case transit_realtime.Alert.SeverityLevel.SEVERE:
                 return 'SEVERE';
-            case 3: // WARNING
+            case transit_realtime.Alert.SeverityLevel.WARNING:
                 return 'WARNING';
-            case 2: // INFO
-            case 1: // UNKNOWN_SEVERITY
+            case transit_realtime.Alert.SeverityLevel.INFO:
+            case transit_realtime.Alert.SeverityLevel.UNKNOWN_SEVERITY:
             default:
                 return 'INFO';
         }
@@ -217,8 +217,8 @@ class GTFSParser {
                     stopName: metadata?.name || `Stop ${stopId}`,
                     direction: isOutbound ? 'Outbound' : 'Inbound',
                     arrivals: [],
-                    latitude: metadata?.lat || 0,
-                    longitude: metadata?.lon || 0,
+                    latitude: metadata?.lat ?? null,
+                    longitude: metadata?.lon ?? null,
                 });
             }
 
