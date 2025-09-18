@@ -1,4 +1,5 @@
 import type { transit_realtime } from 'gtfs-realtime-bindings';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * ACTransitAlert type matching our GraphQL schema
@@ -105,7 +106,7 @@ class GTFSParser {
             .filter((entity) => entity.alert)
             .map((entity) => {
                 const alert = entity.alert!;
-                const id = entity.id || `alert-${Date.now()}-${Math.random()}`;
+                const id = entity.id || `alert-${uuidv4()}`;
 
                 // Extract English text from translations
                 const headerText = this.extractEnglishText(alert.headerText?.translation?.[0]?.text) || 'No title';

@@ -18,6 +18,7 @@
         "@graphql-tools/merge": "^9.1.1",
         "@graphql-tools/schema": "^10.0.25",
         "@graphql-yoga/plugin-graphql-sse": "^3.15.2",
+        "@types/uuid": "^10.0.0",
         "dotenv": "^17.2.2",
         "graphql": "^16.11.0",
         "graphql-scalars": "^1.24.2",
@@ -26,6 +27,7 @@
         "gtfs-realtime-bindings": "^1.1.1",
         "ioredis": "^5.7.0",
         "node-fetch": "^3.3.2",
+        "uuid": "^13.0.0",
         "zod": "^4.1.9"
     },
     "devDependencies": {
