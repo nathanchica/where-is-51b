@@ -3,6 +3,9 @@ import { transit_realtime } from 'gtfs-realtime-bindings';
 import type { BusPositionRaw } from '../services/actRealtime.js';
 import { parseActRealtimeTimestamp } from '../utils/datetime.js';
 
+// https://en.wikipedia.org/wiki/Miles_per_hour
+const MPH_TO_METERS_PER_SECOND = 0.44704;
+
 export interface BusPosition {
     vehicleId: string;
     routeId: string;
@@ -84,8 +87,6 @@ export function createBusPositionsFromGtfsFeed(feedMessage: transit_realtime.IFe
     return positions.sort((a, b) => a.vehicleId.localeCompare(b.vehicleId));
 }
 
-const MPH_TO_METERS_PER_SECOND = 0.44704;
-
 function resolveTripId(raw: BusPositionRaw): string | null {
     const trimmedStringTripId = raw.tatripid?.trim();
     if (trimmedStringTripId) {
@@ -128,7 +129,7 @@ export function createBusPositionsFromActRealtime(rawPositions: Array<BusPositio
                 speed,
                 timestamp: parseActRealtimeTimestamp(rawPosition.tmstmp),
                 tripId: resolveTripId(rawPosition),
-                stopSequence: null,
+                stopSequence: null, // ACT RealTime does not provide stop sequence information
             };
 
             return position;

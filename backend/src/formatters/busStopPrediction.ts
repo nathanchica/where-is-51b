@@ -18,13 +18,20 @@ function parseMinutesAway(value: string): number {
         return 0;
     }
 
-    const parsed = parseInt(value, 10);
+    const parsed = Number.parseInt(value, 10);
     return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 function isOutboundDirection(direction: string): boolean {
     const normalized = direction.toLowerCase();
     return normalized.includes('amtrak') || normalized.includes('away');
+}
+
+/**
+ * Avoids returning negative minutes away
+ */
+function formatMinutesAway(arrivalUnixTime: number): number {
+    return Math.max(0, arrivalUnixTime);
 }
 
 export function createBusStopPredictionsFromActRealtime(
@@ -39,13 +46,14 @@ export function createBusStopPredictionsFromActRealtime(
         .filter((prediction) => isOutboundDirection(prediction.rtdir) === isOutbound)
         .map((prediction) => {
             const arrivalTime = parseActRealtimeTimestamp(prediction.prdtm);
+            const minutesAway = parseMinutesAway(prediction.prdctdn);
 
             return {
                 vehicleId: prediction.vid,
                 tripId: prediction.tatripid,
                 arrivalTime,
                 departureTime: arrivalTime,
-                minutesAway: Math.max(0, parseMinutesAway(prediction.prdctdn)),
+                minutesAway: formatMinutesAway(minutesAway),
                 isOutbound: isOutboundDirection(prediction.rtdir),
                 distanceToStopFeet: Number.isFinite(prediction.dstp) ? prediction.dstp : null,
             };
@@ -72,25 +80,27 @@ export function createBusStopPredictionsFromGtfsFeed(
                 .stopTimeUpdate!.filter(
                     (stopTimeUpdate) =>
                         stopTimeUpdate.stopId &&
-                        (stopTimeUpdate.arrival || stopTimeUpdate.departure) &&
+                        // Ensure at least one of arrival or departure times is present
+                        (stopTimeUpdate.arrival?.time || stopTimeUpdate.departure?.time) &&
                         tripIsOutbound === isOutbound
                 )
                 .map((stopTimeUpdate) => {
-                    const arrivalTime = new Date(
-                        Number(stopTimeUpdate.arrival?.time || stopTimeUpdate.departure?.time) * 1000
-                    );
-                    const departureTime = new Date(
-                        Number(stopTimeUpdate.departure?.time || stopTimeUpdate.arrival?.time) * 1000
-                    );
+                    const arrivalUnixTime = stopTimeUpdate.arrival?.time;
+                    const departureUnixTime = stopTimeUpdate.departure?.time;
+
+                    const arrivalTime = new Date(Number(arrivalUnixTime || departureUnixTime) * 1000);
+                    const departureTime = new Date(Number(departureUnixTime || arrivalUnixTime) * 1000);
+
                     const now = new Date();
                     const minutesAway = Math.round((arrivalTime.getTime() - now.getTime()) / 60000);
+
                     return {
                         tripId: trip.tripId || '',
                         vehicleId,
                         isOutbound: tripIsOutbound,
                         arrivalTime,
                         departureTime,
-                        minutesAway: Math.max(0, minutesAway), // Don't show negative times
+                        minutesAway: formatMinutesAway(minutesAway),
                         distanceToStopFeet: null, // GTFS-RT doesn't provide distance data
                     };
                 });
