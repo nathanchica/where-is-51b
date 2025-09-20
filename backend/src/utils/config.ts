@@ -40,15 +40,16 @@ const envSchema = z.object({
         .enum(['true', 'false'])
         .default('true')
         .transform((val) => val === 'true'),
+    CACHE_TTL_VEHICLE_POSITIONS: z.coerce.number().min(5).max(300).default(10), // seconds
+    CACHE_TTL_PREDICTIONS: z.coerce.number().min(5).max(300).default(15), // seconds
+    CACHE_TTL_SERVICE_ALERTS: z.coerce.number().min(60).max(3600).default(300), // seconds
+    CACHE_TTL_BUS_STOP_PROFILES: z.coerce.number().min(3600).max(604800).default(86400), // seconds
+    CACHE_CLEANUP_THRESHOLD: z.coerce.number().min(50).max(1000).default(100), // Number of items in cache before cleanup is triggered
 
-    // AC Transit API Endpoints
-    AC_TRANSIT_VEHICLE_POSITIONS_URL: z
-        .url()
-        .default('https://api.actransit.org/transit/gtfs-realtime/vehicle-positions'),
-
-    AC_TRANSIT_TRIP_UPDATES_URL: z.url().default('https://api.actransit.org/transit/gtfs-realtime/trip-updates'),
-
-    AC_TRANSIT_SERVICE_ALERTS_URL: z.url().default('https://api.actransit.org/transit/gtfs-realtime/service-alerts'),
+    // AC Transit REST API Base URL
+    AC_TRANSIT_API_BASE_URL: z.url().default('https://api.actransit.org/transit'),
+    ACT_REALTIME_API_BASE_URL: z.url().default('https://api.actransit.org/transit/actrealtime'),
+    GTFS_REALTIME_API_BASE_URL: z.url().default('https://api.actransit.org/transit/gtfsrt'),
 });
 
 /**
