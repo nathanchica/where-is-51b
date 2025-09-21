@@ -43,7 +43,9 @@ export function createBusStopPredictionsFromActRealtime(
     }
 
     return rawPredictions
-        .filter((prediction) => isOutboundDirection(prediction.rtdir) === isOutbound)
+        .filter(
+            (prediction) => isOutboundDirection(prediction.rtdir) === isOutbound && prediction.prdtm && prediction.vid
+        )
         .map((prediction) => {
             const arrivalTime = parseActRealtimeTimestamp(prediction.prdtm);
             const minutesAway = parseMinutesAway(prediction.prdctdn);
@@ -69,12 +71,15 @@ export function createBusStopPredictionsFromGtfsFeed(
 
     // Flatten all stop time updates with their trip context
     const allStopUpdates: BusStopPrediction[] = feedMessage.entity
-        .filter((entity) => entity.tripUpdate?.trip?.routeId && entity.tripUpdate?.stopTimeUpdate)
+        .filter(
+            (entity) =>
+                entity.tripUpdate?.trip?.routeId && entity.tripUpdate?.stopTimeUpdate && entity.tripUpdate?.vehicle?.id
+        )
         .flatMap((entity) => {
             const tripUpdate = entity.tripUpdate!;
             const trip = tripUpdate.trip;
             const tripIsOutbound = trip.directionId === 1; // GTFS directionId: 1=outbound (Amtrak), 0=inbound (Rockridge BART)
-            const vehicleId = tripUpdate.vehicle?.id || entity.id || 'unknown';
+            const vehicleId = tripUpdate.vehicle!.id as string;
 
             return tripUpdate
                 .stopTimeUpdate!.filter(
