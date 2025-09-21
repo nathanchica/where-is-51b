@@ -1,4 +1,6 @@
-export const rootResolver = {
+export type DataSource = 'ACT_REALTIME' | 'GTFS_REALTIME';
+
+const resolvers = {
     Query: {
         health: () => 'GraphQL server is running!',
     },
@@ -13,3 +15,5 @@ export const rootResolver = {
         },
     },
 };
+
+export default resolvers;

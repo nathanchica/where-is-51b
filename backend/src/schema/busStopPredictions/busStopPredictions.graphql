@@ -1,0 +1,94 @@
+"""
+Represents a predicted bus arrival at a stop
+"""
+type BusStopPrediction {
+    """
+    Vehicle identifier for the approaching bus
+    """
+    vehicleId: String!
+
+    """
+    GTFS trip identifier
+    """
+    tripId: String!
+
+    """
+    Predicted arrival time
+    """
+    arrivalTime: DateTime!
+
+    """
+    Predicted departure time (may be same as arrival for most stops)
+    """
+    departureTime: DateTime!
+
+    """
+    Number of minutes until arrival
+    """
+    minutesAway: Int!
+
+    """
+    True if bus is heading outbound (away from downtown)
+    """
+    isOutbound: Boolean!
+
+    """
+    Distance in feet from the bus to the stop at the time of prediction
+    Not available from GTFS-Realtime source (will be null if source is GtfsRealtime)
+    """
+    distanceToStopFeet: Int
+}
+
+extend type Query {
+    """
+    Get arrival predictions for a specific bus stop
+    """
+    busStopPredictions(
+        """
+        Route ID to filter by (e.g., "51B")
+        """
+        routeId: String!
+
+        """
+        Stop code to get predictions for (5-digit code from bus stop sign, e.g., "55555")
+        """
+        stopCode: String!
+
+        """
+        Direction to filter predictions (INBOUND for going towards downtown or OUTBOUND for going away from downtown)
+        """
+        direction: BusDirection!
+
+        """
+        Data source to fetch predictions from (ACT_REALTIME or GTFS_REALTIME). Defaults to ACT_REALTIME.
+        """
+        source: DataSource = ACT_REALTIME
+    ): [BusStopPrediction!]!
+}
+
+extend type Subscription {
+    """
+    Subscribe to real-time arrival predictions for a specific bus stop
+    """
+    busStopPredictions(
+        """
+        Route ID to filter by (e.g., "51B")
+        """
+        routeId: String!
+
+        """
+        Stop code to get predictions for (5-digit code from bus stop sign, e.g., "55555")
+        """
+        stopCode: String!
+
+        """
+        Direction to filter predictions (INBOUND towards Rockridge BART or OUTBOUND towards Berkeley Amtrak)
+        """
+        direction: BusDirection!
+
+        """
+        Data source to fetch predictions from (ACT_REALTIME or GTFS_REALTIME). Defaults to ACT_REALTIME.
+        """
+        source: DataSource = ACT_REALTIME
+    ): [BusStopPrediction!]!
+}

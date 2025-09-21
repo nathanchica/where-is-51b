@@ -8,11 +8,14 @@ import { DateTimeResolver, JSONResolver } from 'graphql-scalars';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import config from './utils/config.js';
+import { createContext, Context } from './context.js';
 
 // Import individual resolvers
-import { rootResolver } from './schema/root/root.resolver.js';
-import { busPositionResolver } from './schema/busPosition/busPosition.resolver.js';
-import { stopPredictionResolver } from './schema/stopPrediction/stopPrediction.resolver.js';
+import rootResolvers from './schema/root/root.resolver.js';
+import acTransitResolvers from './schema/acTransit/acTransit.resolver.js';
+import busPositionResolvers from './schema/busPosition/busPosition.resolver.js';
+import busStopResolvers from './schema/busStop/busStop.resolver.js';
+import busStopPredictionsResolvers from './schema/busStopPredictions/busStopPredictions.resolver.js';
 import { acTransitAlertResolver } from './schema/acTransitAlert/acTransitAlert.resolver.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -27,9 +30,11 @@ const resolvers = mergeResolvers([
     // GraphQL scalar resolvers
     { DateTime: DateTimeResolver, JSON: JSONResolver },
     // Domain-specific resolvers
-    rootResolver,
-    busPositionResolver,
-    stopPredictionResolver,
+    rootResolvers,
+    acTransitResolvers,
+    busPositionResolvers,
+    busStopResolvers,
+    busStopPredictionsResolvers,
     acTransitAlertResolver,
 ]);
 
@@ -40,12 +45,13 @@ const schema = makeExecutableSchema({
 });
 
 // Create Yoga instance with the schema
-const yoga = createYoga({
+const yoga = createYoga<Context>({
     schema,
     cors: {
         origin: config.FRONTEND_URL,
         credentials: true,
     },
+    context: createContext,
     plugins: [
         useGraphQLSSE(), // Enable Server-Sent Events for subscriptions
     ],

@@ -130,5 +130,3 @@ export function parseActRealtimeTimestamp(value?: string): Date {
 
     return Number.isNaN(parsedDate.getTime()) ? new Date() : parsedDate;
 }
-
-export default parseActRealtimeTimestamp;

@@ -42,9 +42,9 @@ Build a responsive web dashboard that helps commuters track Bus 51B in real-time
 
 ### MVP (Phase 1)
 
-- [ ] Display real-time arrival predictions for 2 pre-selected stops
-- [ ] Show bus direction (inbound/outbound)
-- [ ] Auto-refresh every 15 seconds
+- [x] Display real-time arrival predictions for 2 pre-selected stops
+- [x] Show bus direction (inbound/outbound)
+- [x] Auto-refresh every 15 seconds
 - [ ] Simple, clean UI with countdown timers
 - [ ] Mobile-responsive design
 
@@ -114,6 +114,29 @@ Build a responsive web dashboard that helps commuters track Bus 51B in real-time
 - **Timestamp Format**: Uses Long (64-bit integers) from protobuf, converted to Date objects
 - **Direction**: `directionId` 0 = Outbound, 1 = Inbound
 - **Multilingual Alerts**: Alerts include Spanish/Chinese translations separated by `---`
+
+### Stop Identifier Confusion (Important!)
+
+AC Transit uses two different identifier systems for bus stops, and the naming is confusing:
+
+1. **stop_id** (GTFS Standard)
+    - Sequential internal identifier (e.g., "1234", "5678")
+    - Used in GTFS-Realtime feeds (protobuf)
+    - Used in GTFS static data (stops.txt)
+    - Primary key in the GTFS ecosystem
+
+2. **stop_code** (Public-facing)
+    - 5-digit code displayed on physical bus stop signs (e.g., "55555", "58883")
+    - What passengers see and use to identify stops
+    - Human-readable and consistent across systems
+    - **CONFUSING**: AC Transit's proprietary REST API calls this field "StopId" or "stpid" even though it's actually the stop_code!
+
+**Critical Integration Note**:
+
+- GTFS-Realtime predictions use actual `stop_id` values
+- AC Transit REST API predictions use `stop_code` values but confusingly labels them as "StopId/stpid"
+- The backend must map between these identifiers using GTFS static data (stops.txt) which contains both fields
+- When the AC Transit API returns "StopId": "55555", this is actually the stop_code, not the GTFS stop_id
 
 ## Getting Started
 
@@ -191,22 +214,40 @@ type BusPosition {
     stopSequence: Int
 }
 
-type StopPrediction {
-    stopId: String!
-    stopName: String!
-    direction: String!
-    arrivals: [Arrival!]!
+# Bus Stop Predictions Types
+type BusStop {
+    id: String! # GTFS stop identifier (sequential ID, e.g., "1234")
+    code: String! # Public stop code (5-digit code on bus stop signs, e.g., "55555")
+    name: String! # Human-readable stop name
     latitude: Float!
     longitude: Float!
 }
 
 type Arrival {
     vehicleId: String!
-    tripId: String!
+    tripId: String! # GTFS trip identifier
     arrivalTime: DateTime!
-    departureTime: DateTime!
+    departureTime: DateTime! # May be same as arrival for most stops
     minutesAway: Int!
-    isOutbound: Boolean!
+    isOutbound: Boolean! # True if bus is heading outbound (away from downtown)
+    distanceToStopFeet: Int # Distance in feet from the bus to the stop (null for GTFS-RT source)
+}
+
+type BusStopPredictions {
+    busStop: BusStop!
+    direction: String! # e.g., "Berkeley Amtrak (Outbound)" or "Rockridge BART (Inbound)"
+    arrivals: [Arrival!]!
+    source: PredictionSource! # Data source for these predictions
+}
+
+enum Direction {
+    INBOUND # Towards Rockridge BART (directionId = 0 in GTFS)
+    OUTBOUND # Towards Berkeley Amtrak (directionId = 1 in GTFS)
+}
+
+enum PredictionSource {
+    GtfsRealtime # GTFS-Realtime standard trip updates feed (protobuf format)
+    ActRealtime # AC Transit proprietary real-time API (JSON format)
 }
 
 type ACTransitAlert {
@@ -229,14 +270,22 @@ enum ACTransitAlertSeverity {
 type Query {
     health: String!
     busPositions(routeId: String!): [BusPosition!]!
-    stopPredictions(routeId: String!, stopIds: [String!]!): [StopPrediction!]!
+    busStopPredictions(
+        routeId: String! # Route ID (e.g., "51B")
+        stopId: String! # Single stop code (e.g., "55555")
+        direction: Direction! # Required direction filter
+    ): BusStopPredictions # Returns null if no predictions available
     acTransitAlerts(routeId: String): [ACTransitAlert!]!
 }
 
 type Subscription {
     ping: String!
     busPositions(routeId: String!): [BusPosition!]!
-    stopPredictions(routeId: String!, stopIds: [String!]!): [StopPrediction!]!
+    busStopPredictions(
+        routeId: String! # Route ID (e.g., "51B")
+        stopId: String! # Single stop code (e.g., "55555")
+        direction: Direction! # Required direction filter
+    ): BusStopPredictions # Returns null if no predictions available
     acTransitAlerts(routeId: String): [ACTransitAlert!]!
 }
 ```
@@ -302,33 +351,72 @@ const isDev = config.NODE_ENV === 'development'; // boolean
 
 ## Service Architecture
 
-The backend implements a clean layered architecture:
+The backend implements a clean layered architecture with optimized data fetching:
 
 ```
-AC Transit GTFS-RT API
+AC Transit APIs (GTFS-RT & REST)
          │
          ▼
-┌─────────────────────┐
-│  acTransit.ts       │ ← Service Layer
-│  - Fetches binary   │
-│  - Handles auth     │
-│  - Basic filtering  │
-└─────────┬───────────┘
+┌─────────────────────────┐
+│  acTransit.ts           │ ← Service Layer
+│  - Batched API calls    │
+│  - Up to 10 stops/call  │
+│  - Smart caching        │
+│  - Auth handling        │
+└─────────┬───────────────┘
          ▼
-┌─────────────────────┐
-│  gtfsParser.ts      │ ← Parser Layer
-│  - Type transforms  │
-│  - English extract  │
-│  - Schema mapping   │
-└─────────┬───────────┘
+┌─────────────────────────┐
+│  Parsers               │ ← Parser Layer
+│  - gtfsParser.ts        │
+│  - actRealtimeParser.ts │
+│  - Minimal BusStop data │
+│  - Type transforms      │
+└─────────┬───────────────┘
          ▼
-┌─────────────────────┐
-│  GraphQL Resolvers  │ ← API Layer
-│  - Query handling   │
-│  - Subscriptions    │
-│  - Caching          │
-└─────────────────────┘
+┌─────────────────────────┐
+│  GraphQL Resolvers      │ ← API Layer
+│  - Field resolvers      │
+│  - Lazy data loading    │
+│  - Subscriptions        │
+└─────────────────────────┘
 ```
+
+### Key Architectural Patterns
+
+#### 1. Batched API Calls
+
+The `acTransit.ts` service layer now supports batched requests for both stop metadata and predictions:
+
+- `fetchBusStopProfiles(stopCodes[])` - Fetches complete stop metadata in batches of 10
+- `fetchBusStopPredictions(stopCodes[])` - Fetches arrival predictions in batches of 10
+
+#### 2. Field Resolvers for Lazy Loading
+
+BusStop fields are resolved on-demand through GraphQL field resolvers:
+
+```typescript
+// Parser returns minimal data
+busStop: {
+    __typename: 'BusStop',
+    code: '55555'  // Only the stop code
+}
+
+// Field resolvers fetch additional data when requested
+BusStop: {
+    id: async (parent) => // Fetches from API if needed
+    name: async (parent) => // Fetches from API if needed
+    latitude: async (parent) => // Fetches from API if needed
+    longitude: async (parent) => // Fetches from API if needed
+}
+```
+
+#### 3. Unified Stop Data Fetching
+
+Both GTFS-RT and AC Transit REST parsers now use the same simplified approach:
+
+- Parsers return minimal BusStop objects with just `__typename` and `code` or `id`
+- Field resolvers handle fetching additional data through `fetchBusStopProfiles`
+- Eliminates duplicate metadata fetching logic
 
 ## Project Structure
 
@@ -344,15 +432,16 @@ where-is-51b/
 │   │   │   ├── busPosition/
 │   │   │   │   ├── busPosition.graphql
 │   │   │   │   └── busPosition.resolver.ts
-│   │   │   ├── stopPrediction/
-│   │   │   │   ├── stopPrediction.graphql
-│   │   │   │   └── stopPrediction.resolver.ts
+│   │   │   ├── busStopPredictions/
+│   │   │   │   ├── busStopPredictions.graphql
+│   │   │   │   └── busStopPredictions.resolver.ts
 │   │   │   └── acTransitAlert/
 │   │   │       ├── acTransitAlert.graphql
 │   │   │       └── acTransitAlert.resolver.ts
 │   │   ├── services/
-│   │   │   ├── acTransit.ts   # AC Transit API client (fetches GTFS-RT feeds)
-│   │   │   └── gtfsParser.ts  # GTFS parser (transforms protobuf to GraphQL types)
+│   │   │   ├── acTransit.ts        # AC Transit API client (batched fetching, caching)
+│   │   │   ├── gtfsParser.ts       # GTFS-RT parser (protobuf to GraphQL types)
+│   │   │   └── actRealtimeParser.ts # AC Transit REST API parser
 │   │   └── utils/
 │   │       ├── config.ts      # Zod env validation & config
 │   │       └── cache.ts       # Caching logic
@@ -420,6 +509,8 @@ if (!data) {
 - **Vehicle Positions**: 10 seconds (real-time data)
 - **Trip Updates**: 15 seconds (predictions)
 - **Service Alerts**: 5 minutes (rarely changes)
+- **Bus Stop Profiles**: 24 hours (metadata rarely changes)
+- **Bus Stop Predictions**: 30 seconds (real-time predictions)
 
 ## Performance Considerations
 
