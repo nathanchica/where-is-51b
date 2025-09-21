@@ -1,31 +1,18 @@
-import { useState } from 'react';
-
-import reactLogo from './assets/react.svg';
-import viteLogo from '/vite.svg';
-import './App.css';
+import { SystemTimeCard } from './components/SystemTime';
 
 function App() {
-    const [count, setCount] = useState(0);
-
     return (
-        <>
-            <div>
-                <a href="https://vite.dev" target="_blank" rel="noreferrer">
-                    <img src={viteLogo} className="logo" alt="Vite logo" />
-                </a>
-                <a href="https://react.dev" target="_blank" rel="noreferrer">
-                    <img src={reactLogo} className="logo react" alt="React logo" />
-                </a>
-            </div>
-            <h1>Vite + React</h1>
-            <div className="card">
-                <button onClick={() => setCount((count) => count + 1)}>count is {count}</button>
-                <p>
-                    Edit <code>src/App.tsx</code> and save to test HMR
-                </p>
-            </div>
-            <p className="read-the-docs">Click on the Vite and React logos to learn more</p>
-        </>
+        <main className="flex min-h-screen items-center justify-center bg-slate-950 px-6 py-16 text-slate-100">
+            <section className="w-full max-w-md space-y-6 rounded-2xl border border-slate-800 bg-slate-900/50 p-8 shadow-2xl shadow-slate-950/60 backdrop-blur">
+                <header className="space-y-2">
+                    <p className="text-sm uppercase tracking-[0.4em] text-slate-400">Dashboard</p>
+                    <h1 className="text-3xl font-semibold tracking-tight">Where is 51B</h1>
+                    <p className="text-sm text-slate-400">Monitoring AC Transit system updates in real time.</p>
+                </header>
+
+                <SystemTimeCard />
+            </section>
+        </main>
     );
 }
 

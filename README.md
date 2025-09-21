@@ -22,7 +22,7 @@ Build a responsive web dashboard that helps commuters track Bus 51B in real-time
 - **Node.js** - Runtime environment
 - **gtfs-realtime-bindings** - For parsing AC Transit's protobuf data
 - **node-fetch** - HTTP client for API calls
-- **graphql-ws** - WebSocket support for subscriptions
+- **graphql-sse** - Server-Sent Events support for subscriptions (via Yoga plugin)
 - **graphql-scalars** - Extended scalar types (DateTime, JSON)
 - **ioredis** - Redis client with automatic fallback to memory cache
 - **Zod** - Runtime validation for environment variables
@@ -31,16 +31,30 @@ Build a responsive web dashboard that helps commuters track Bus 51B in real-time
 
 - **Vite** - Fast build tool and frontend server
 - **React 19** - UI framework
-- **Apollo Client** - GraphQL client with subscription support
+- **urql** - Lightweight GraphQL client with SSE subscription support
+- **Tailwind CSS v4** - Utility-first styling with the `@tailwindcss/vite` plugin
 - **Leaflet/Mapbox** - Interactive map visualization
-- **Tailwind CSS** - Utility-first styling
+- **TypeScript** - Type-safe components and GraphQL hooks
 
 ### Data Source
 
-- **AC Transit GTFS-Realtime API** - Real-time bus positions and predictions
-- **AC Transit GTFS Static** - Route shapes, stop locations, schedules
+1. **ACT RealTime API** (JSON)
+    - Vehicle Positions: `https://api.actransit.org/transit/actrealtime/vehiclepositions`
+    - Stop Predictions: `https://api.actransit.org/transit/actrealtime/prediction`
+    - Service Alerts: `https://api.actransit.org/transit/actrealtime/servicebulletin`
+    - System Time: `https://api.actransit.org/transit/actrealtime/time`
+    - Stop Profiles: `https://api.actransit.org/transit/actrealtime/stop`
 
-## Features
+2. **GTFS-Realtime Feeds** (Binary Protobuf)
+    - Vehicle Positions: `https://api.actransit.org/transit/gtfsrt/vehicles`
+    - Trip Updates: `https://api.actransit.org/transit/gtfsrt/tripupdates`
+    - Service Alerts: `https://api.actransit.org/transit/gtfsrt/alerts`
+
+3. **GTFS Static** (ZIP file with CSVs)
+    - Routes, stops, stop times, shapes
+    - Updated ~3 times per year
+
+## Milestones
 
 ### MVP (Phase 1)
 
@@ -88,7 +102,7 @@ Build a responsive web dashboard that helps commuters track Bus 51B in real-time
                │ GraphQL over HTTP/SSE
 ┌──────────────▼──────────────┐
 │ React client (work in prog.)│
-│ future map + dashboard UI   │
+│ dashboard + map UI          │
 └─────────────────────────────┘
 ```
 
@@ -96,26 +110,6 @@ The backend fetches from both ACT RealTime (JSON) and GTFS-Realtime (protobuf) f
 normalizes the data through dedicated formatter utilities, and serves consistent GraphQL types.
 
 Subscriptions stream over GraphQL Yoga using Server‑Sent Events.
-
-## API Integration
-
-### Data Sources
-
-1. **ACT RealTime API** (JSON)
-    - Vehicle Positions: `https://api.actransit.org/transit/actrealtime/vehiclepositions`
-    - Stop Predictions: `https://api.actransit.org/transit/actrealtime/prediction`
-    - Service Alerts: `https://api.actransit.org/transit/actrealtime/servicebulletin`
-    - System Time: `https://api.actransit.org/transit/actrealtime/time`
-    - Stop Profiles: `https://api.actransit.org/transit/actrealtime/stop`
-
-2. **GTFS-Realtime Feeds** (Binary Protobuf)
-    - Vehicle Positions: `https://api.actransit.org/transit/gtfsrt/vehicles`
-    - Trip Updates: `https://api.actransit.org/transit/gtfsrt/tripupdates`
-    - Service Alerts: `https://api.actransit.org/transit/gtfsrt/alerts`
-
-3. **GTFS Static** (ZIP file with CSVs)
-    - Routes, stops, stop times, shapes
-    - Updated ~3 times per year
 
 ### Implementation Notes
 
@@ -143,7 +137,7 @@ AC Transit uses two different identifier systems for bus stops, and the naming i
 **Critical Integration Note**:
 
 - GTFS-Realtime predictions use actual `stop_id` values
-- AC Transit REST API predictions use `stop_code` values but confusingly labels them as "StopId/stpid"
+- AC Transit REST API predictions use `stop_code` values but confusingly label them as "StopId/stpid"
 - The backend must map between these identifiers using GTFS static data (stops.txt) which contains both fields
 - When the AC Transit API returns "StopId": "55555", this is actually the stop_code, not the GTFS stop_id
 
@@ -196,7 +190,7 @@ GTFS_REALTIME_API_BASE_URL=https://api.actransit.org/transit/gtfsrt
 
 # frontend/.env
 VITE_GRAPHQL_HTTP_URL=http://localhost:4000/graphql
-VITE_GRAPHQL_WS_URL=ws://localhost:4000/graphql
+VITE_GRAPHQL_SSE_URL=http://localhost:4000/graphql
 ```
 
 > **Note**: The backend will validate all environment variables on startup using Zod.
@@ -427,10 +421,11 @@ where-is-51b/
 │   └── tsconfig.json
 ├── frontend/
 │   ├── src/
+│   │   ├── components/
+│   │   │   └── SystemTime.tsx
 │   │   ├── App.tsx
-│   │   ├── App.css
-│   │   ├── main.tsx
 │   │   ├── index.css
+│   │   ├── main.tsx
 │   │   └── config/
 │   │       └── bus-stops.json
 │   ├── package.json
