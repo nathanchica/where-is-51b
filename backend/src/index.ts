@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import { createServer } from 'node:http';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,7 +23,16 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // Load all GraphQL schema files
-const typesArray = loadFilesSync(path.join(__dirname, './schema/**/*.graphql'));
+const schemaDirs = [path.join(__dirname, './schema'), path.join(__dirname, '../src/schema')].filter((dir) =>
+    existsSync(dir)
+);
+
+if (schemaDirs.length === 0) {
+    throw new Error('No GraphQL schema directory found. Make sure SDL files are available.');
+}
+
+const schemaGlobs = schemaDirs.map((dir) => path.join(dir, '**/*.graphql'));
+const typesArray = loadFilesSync(schemaGlobs);
 const typeDefs = mergeTypeDefs(typesArray);
 
 // Merge all resolvers from individual files
