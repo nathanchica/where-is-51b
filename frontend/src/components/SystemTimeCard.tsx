@@ -11,7 +11,7 @@ type SystemTimePayload = {
     systemTime: string;
 };
 
-export function SystemTimeCard() {
+function SystemTimeCard() {
     const [{ data, error }] = useSubscription<SystemTimePayload>({
         query: SYSTEM_TIME_SUBSCRIPTION,
     });
@@ -113,3 +113,5 @@ export function SystemTimeCard() {
         </div>
     );
 }
+
+export default SystemTimeCard;

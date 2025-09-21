@@ -1,4 +1,4 @@
-import { SystemTimeCard } from './components/SystemTime';
+import SystemTimeCard from './components/SystemTimeCard';
 
 function App() {
     return (
