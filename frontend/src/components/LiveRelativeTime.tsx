@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 
+import { pluralize } from '../utils/pluralize';
+
 type LiveRelativeTimeProps = {
     timestamp: number | null;
     prefix?: string;
@@ -18,17 +20,13 @@ type UseRelativeTimeLabelOptions = {
 const DEFAULT_UPDATE_INTERVAL = 1000;
 const DEFAULT_JUST_NOW_THRESHOLD = 1;
 
-function pluralize(value: number, singular: string, plural: string) {
-    return `${value} ${value === 1 ? singular : plural}`;
-}
-
 function formatRelativeDelta(deltaSeconds: number, justNowThresholdSeconds: number) {
     if (deltaSeconds <= justNowThresholdSeconds) {
         return 'just now';
     }
 
     if (deltaSeconds < 60) {
-        return `${deltaSeconds} seconds ago`;
+        return `${pluralize(deltaSeconds, 'second', 'seconds')} ago`;
     }
 
     const minutes = Math.floor(deltaSeconds / 60);
