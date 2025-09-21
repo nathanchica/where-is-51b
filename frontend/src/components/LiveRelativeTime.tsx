@@ -31,17 +31,17 @@ function formatRelativeDelta(deltaSeconds: number, justNowThresholdSeconds: numb
         return `${deltaSeconds} seconds ago`;
     }
 
-    const minutes = Math.round(deltaSeconds / 60);
+    const minutes = Math.floor(deltaSeconds / 60);
     if (minutes < 60) {
         return `${pluralize(minutes, 'minute', 'minutes')} ago`;
     }
 
-    const hours = Math.round(minutes / 60);
+    const hours = Math.floor(minutes / 60);
     if (hours < 24) {
         return `${pluralize(hours, 'hour', 'hours')} ago`;
     }
 
-    const days = Math.round(hours / 24);
+    const days = Math.floor(hours / 24);
     return `${pluralize(days, 'day', 'days')} ago`;
 }
 

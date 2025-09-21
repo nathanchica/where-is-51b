@@ -7,6 +7,8 @@ import 'leaflet/dist/leaflet.css';
 
 import LiveRelativeTime from './LiveRelativeTime';
 
+import { escapeHtml } from '../utils/escapeHtml';
+
 const BUS_POSITIONS_SUBSCRIPTION = gql`
     subscription BusPositions($routeId: String!) {
         busPositions(routeId: $routeId) {
@@ -39,36 +41,25 @@ type BusPositionsPayload = {
 
 const FALLBACK_CENTER: LatLngExpression = [37.8665, -122.2673];
 const FALLBACK_ZOOM = 13;
-
-function escapeHtml(value: string) {
-    return value.replace(/[&<>'"]/g, (character) => {
-        switch (character) {
-            case '&':
-                return '&amp;';
-            case '<':
-                return '&lt;';
-            case '>':
-                return '&gt;';
-            case '"':
-                return '&quot;';
-            case "'":
-                return '&#39;';
-            default:
-                return character;
-        }
-    });
-}
+const ICON_SIZE: [number, number] = [40, 40];
+const ICON_ANCHOR: [number, number] = [20, 20];
+const TOOLTIP_ANCHOR: [number, number] = [0, -24];
+const VEHICLE_ID_MAX_LENGTH = 6;
+const SPEED_MPS_TO_MPH = 2.23694;
+const MAP_SINGLE_VEHICLE_MIN_ZOOM = 15;
+const MAP_MAX_BOUNDS_ZOOM = 16;
+const MAP_BOUNDS_PADDING = 0.2;
 
 function createBusMarkerIcon(vehicleId: string | null | undefined): DivIcon {
     const trimmedId = vehicleId?.trim() ?? '';
-    const label = trimmedId ? trimmedId.toUpperCase().slice(0, 6) : '?';
+    const label = trimmedId ? trimmedId.toUpperCase().slice(0, VEHICLE_ID_MAX_LENGTH) : '?';
     const safeVehicleId = escapeHtml(label);
 
     return L.divIcon({
         className: '',
-        iconSize: [40, 40],
-        iconAnchor: [20, 20],
-        tooltipAnchor: [0, -24],
+        iconSize: ICON_SIZE,
+        iconAnchor: ICON_ANCHOR,
+        tooltipAnchor: TOOLTIP_ANCHOR,
         html: `
             <span class="bus-marker-icon" role="presentation">
                 <span class="bus-marker-icon__label" aria-hidden="true">${safeVehicleId}</span>
@@ -122,12 +113,12 @@ function AutoFitBounds({ positions }: { positions: BusPosition[] }) {
 
         if (positions.length === 1) {
             const [{ latitude, longitude }] = positions;
-            map.setView([latitude, longitude], Math.max(map.getZoom(), 15));
+            map.setView([latitude, longitude], Math.max(map.getZoom(), MAP_SINGLE_VEHICLE_MIN_ZOOM));
         } else {
             const bounds = L.latLngBounds(
                 positions.map((position) => [position.latitude, position.longitude] as [number, number])
             );
-            map.fitBounds(bounds.pad(0.2), { maxZoom: 16 });
+            map.fitBounds(bounds.pad(MAP_BOUNDS_PADDING), { maxZoom: MAP_MAX_BOUNDS_ZOOM });
         }
 
         hasFittedView.current = true;
@@ -147,23 +138,26 @@ function BusRouteMap({ routeId }: BusRouteMapProps) {
             return [] as BusPosition[];
         }
 
-        return data.busPositions
-            .filter((position) => Number.isFinite(position.latitude) && Number.isFinite(position.longitude))
-            .sort((first, second) => {
-                const secondTime = new Date(second.timestamp).getTime() || 0;
-                const firstTime = new Date(first.timestamp).getTime() || 0;
-                return secondTime - firstTime;
-            });
+        return data.busPositions.filter(
+            (position) => Number.isFinite(position.latitude) && Number.isFinite(position.longitude)
+        );
     }, [data?.busPositions]);
 
     const lastUpdatedTimestamp = useMemo(() => {
-        if (!positions.length) {
-            return null;
+        let latest: number | null = null;
+
+        for (const position of positions) {
+            const timestampMs = new Date(position.timestamp).getTime();
+            if (Number.isNaN(timestampMs)) {
+                continue;
+            }
+
+            if (latest === null || timestampMs > latest) {
+                latest = timestampMs;
+            }
         }
 
-        const mostRecent = positions[0];
-        const timestampMs = new Date(mostRecent.timestamp).getTime();
-        return Number.isNaN(timestampMs) ? null : timestampMs;
+        return latest;
     }, [positions]);
 
     const markers = useMemo(
@@ -236,11 +230,13 @@ function BusRouteMap({ routeId }: BusRouteMapProps) {
                                 const markerPosition: LatLngExpression = [position.latitude, position.longitude];
                                 const updatedAt = formatTimestamp(position.timestamp);
                                 const speedMph =
-                                    typeof position.speed === 'number' ? Math.round(position.speed * 2.23694) : null;
+                                    typeof position.speed === 'number'
+                                        ? Math.round(position.speed * SPEED_MPS_TO_MPH)
+                                        : null;
 
                                 return (
                                     <Marker
-                                        key={`${position.vehicleId}-${position.timestamp}`}
+                                        key={`${position.vehicleId}`}
                                         position={markerPosition}
                                         icon={position.icon}
                                         alt={`Vehicle ${position.vehicleId || 'unknown'} location marker`}

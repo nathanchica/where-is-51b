@@ -118,13 +118,13 @@ function SystemTimeCard() {
                 )}
             </div>
             {lastSyncAt ? (
-                <div className="mt-4">
+                <footer className="mt-4">
                     <LiveRelativeTime
                         timestamp={lastSyncAt}
                         prefix="Synced"
                         className="text-xs uppercase tracking-[0.2em] text-slate-500"
                     />
-                </div>
+                </footer>
             ) : (
                 <>
                     <div className="mt-4 h-3 w-1/3 rounded-md shimmer" aria-hidden="true" />
