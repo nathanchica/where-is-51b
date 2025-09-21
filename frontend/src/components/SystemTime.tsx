@@ -12,7 +12,7 @@ type SystemTimePayload = {
 };
 
 export function SystemTimeCard() {
-    const [{ data, fetching, error }] = useSubscription<SystemTimePayload>({
+    const [{ data, error }] = useSubscription<SystemTimePayload>({
         query: SYSTEM_TIME_SUBSCRIPTION,
     });
 
@@ -77,16 +77,11 @@ export function SystemTimeCard() {
         });
     }, [displayTime]);
 
-    const createSyncStatusText = (): string | null => {
-        if (!lastSyncAt) {
-            return null;
-        }
-
+    let syncStatus: string | null = null;
+    if (lastSyncAt) {
         const deltaSeconds = Math.max(0, Math.round((Date.now() - lastSyncAt) / 1000));
-        return deltaSeconds <= 1 ? 'Synced just now' : `Synced ${deltaSeconds} seconds ago`;
-    };
-
-    const syncStatus = createSyncStatusText();
+        syncStatus = deltaSeconds <= 1 ? 'Synced just now' : `Synced ${deltaSeconds} seconds ago`;
+    }
 
     if (error) {
         return (
@@ -100,11 +95,21 @@ export function SystemTimeCard() {
     return (
         <div className="rounded-xl border border-slate-800 bg-slate-900/80 p-6">
             <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Live system clock</p>
-            <p className="mt-3 text-4xl font-mono">
-                {formattedClockTime ?? (fetching ? 'Connecting…' : 'Waiting for system time…')}
-            </p>
-            {formattedDate ? <p className="mt-2 text-sm text-slate-400">{formattedDate}</p> : null}
-            {syncStatus ? <p className="mt-4 text-xs uppercase tracking-[0.2em] text-slate-500">{syncStatus}</p> : null}
+            <div className="mt-3 h-12 font-mono text-4xl">
+                {formattedClockTime ? (
+                    <p>{formattedClockTime}</p>
+                ) : (
+                    <div className="h-full w-3/4 rounded-md shimmer" aria-hidden />
+                )}
+            </div>
+            <div className="mt-2 min-h-5 text-sm text-slate-400">
+                {formattedDate ? <p>{formattedDate}</p> : <div className="h-5 w-2/3 rounded-md shimmer" aria-hidden />}
+            </div>
+            {syncStatus ? (
+                <p className="mt-4 text-xs uppercase tracking-[0.2em] text-slate-500">{syncStatus}</p>
+            ) : (
+                <div className="mt-4 h-3 w-1/3 rounded-md shimmer" aria-hidden />
+            )}
         </div>
     );
 }
