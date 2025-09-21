@@ -101,12 +101,19 @@ Subscriptions stream over GraphQL Yoga using Server‑Sent Events.
 
 ### Data Sources
 
-1. **GTFS-Realtime Feeds** (Binary Protobuf)
+1. **ACT RealTime API** (JSON)
+    - Vehicle Positions: `https://api.actransit.org/transit/actrealtime/vehiclepositions`
+    - Stop Predictions: `https://api.actransit.org/transit/actrealtime/prediction`
+    - Service Alerts: `https://api.actransit.org/transit/actrealtime/servicebulletin`
+    - System Time: `https://api.actransit.org/transit/actrealtime/time`
+    - Stop Profiles: `https://api.actransit.org/transit/actrealtime/stop`
+
+2. **GTFS-Realtime Feeds** (Binary Protobuf)
     - Vehicle Positions: `https://api.actransit.org/transit/gtfsrt/vehicles`
     - Trip Updates: `https://api.actransit.org/transit/gtfsrt/tripupdates`
     - Service Alerts: `https://api.actransit.org/transit/gtfsrt/alerts`
 
-2. **GTFS Static** (ZIP file with CSVs)
+3. **GTFS Static** (ZIP file with CSVs)
     - Routes, stops, stop times, shapes
     - Updated ~3 times per year
 

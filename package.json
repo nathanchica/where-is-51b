@@ -47,7 +47,7 @@
         "**/*.{ts,tsx}": [
             "prettier --write",
             "eslint --fix --max-warnings=0 --no-warn-ignored",
-            "tsc-files --noEmit"
+            "tsc-files --noEmit --project frontend/tsconfig.app.json --project backend/tsconfig.json"
         ],
         "**/*.{js,jsx}": [
             "prettier --write",
