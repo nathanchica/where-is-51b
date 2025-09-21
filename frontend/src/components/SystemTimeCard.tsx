@@ -92,10 +92,7 @@ function SystemTimeCard() {
         syncStatus = deltaSeconds <= 1 ? 'Synced just now' : `Synced ${deltaSeconds} seconds ago`;
     }
 
-    const isClockLoading = !formattedClockTime;
-    const isDateLoading = !formattedDate;
-    const isStatusLoading = !syncStatus;
-    const isLoading = isClockLoading || isDateLoading || isStatusLoading;
+    const isLoading = !displayTime;
 
     return (
         <section
@@ -110,9 +107,7 @@ function SystemTimeCard() {
                 ) : (
                     <>
                         <div className="h-full w-3/4 rounded-md shimmer" aria-hidden="true" />
-                        <span className="sr-only" role="status" aria-live="polite">
-                            Loading current system time
-                        </span>
+                        <span className="sr-only">Loading current system time</span>
                     </>
                 )}
             </div>
@@ -122,9 +117,7 @@ function SystemTimeCard() {
                 ) : (
                     <>
                         <div className="h-5 w-2/3 rounded-md shimmer" aria-hidden="true" />
-                        <span className="sr-only" role="status" aria-live="polite">
-                            Loading current date
-                        </span>
+                        <span className="sr-only">Loading current date</span>
                     </>
                 )}
             </div>
@@ -133,9 +126,7 @@ function SystemTimeCard() {
             ) : (
                 <>
                     <div className="mt-4 h-3 w-1/3 rounded-md shimmer" aria-hidden="true" />
-                    <span className="sr-only" role="status" aria-live="polite">
-                        Synchronising clock
-                    </span>
+                    <span className="sr-only">Synchronising clock</span>
                 </>
             )}
         </section>
