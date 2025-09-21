@@ -37,10 +37,23 @@ Build a responsive web dashboard that helps commuters track Bus 51B in real-time
 
 ### Data Source
 
-- **AC Transit GTFS-Realtime API** - Real-time bus positions and predictions
-- **AC Transit GTFS Static** - Route shapes, stop locations, schedules
+1. **ACT RealTime API** (JSON)
+    - Vehicle Positions: `https://api.actransit.org/transit/actrealtime/vehiclepositions`
+    - Stop Predictions: `https://api.actransit.org/transit/actrealtime/prediction`
+    - Service Alerts: `https://api.actransit.org/transit/actrealtime/servicebulletin`
+    - System Time: `https://api.actransit.org/transit/actrealtime/time`
+    - Stop Profiles: `https://api.actransit.org/transit/actrealtime/stop`
 
-## Features
+2. **GTFS-Realtime Feeds** (Binary Protobuf)
+    - Vehicle Positions: `https://api.actransit.org/transit/gtfsrt/vehicles`
+    - Trip Updates: `https://api.actransit.org/transit/gtfsrt/tripupdates`
+    - Service Alerts: `https://api.actransit.org/transit/gtfsrt/alerts`
+
+3. **GTFS Static** (ZIP file with CSVs)
+    - Routes, stops, stop times, shapes
+    - Updated ~3 times per year
+
+## Milestones
 
 ### MVP (Phase 1)
 
@@ -96,26 +109,6 @@ The backend fetches from both ACT RealTime (JSON) and GTFS-Realtime (protobuf) f
 normalizes the data through dedicated formatter utilities, and serves consistent GraphQL types.
 
 Subscriptions stream over GraphQL Yoga using Server‑Sent Events.
-
-## API Integration
-
-### Data Sources
-
-1. **ACT RealTime API** (JSON)
-    - Vehicle Positions: `https://api.actransit.org/transit/actrealtime/vehiclepositions`
-    - Stop Predictions: `https://api.actransit.org/transit/actrealtime/prediction`
-    - Service Alerts: `https://api.actransit.org/transit/actrealtime/servicebulletin`
-    - System Time: `https://api.actransit.org/transit/actrealtime/time`
-    - Stop Profiles: `https://api.actransit.org/transit/actrealtime/stop`
-
-2. **GTFS-Realtime Feeds** (Binary Protobuf)
-    - Vehicle Positions: `https://api.actransit.org/transit/gtfsrt/vehicles`
-    - Trip Updates: `https://api.actransit.org/transit/gtfsrt/tripupdates`
-    - Service Alerts: `https://api.actransit.org/transit/gtfsrt/alerts`
-
-3. **GTFS Static** (ZIP file with CSVs)
-    - Routes, stops, stop times, shapes
-    - Updated ~3 times per year
 
 ### Implementation Notes
 
