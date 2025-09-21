@@ -22,7 +22,7 @@ Build a responsive web dashboard that helps commuters track Bus 51B in real-time
 - **Node.js** - Runtime environment
 - **gtfs-realtime-bindings** - For parsing AC Transit's protobuf data
 - **node-fetch** - HTTP client for API calls
-- **graphql-ws** - WebSocket support for subscriptions
+- **graphql-sse** - Server-Sent Events support for subscriptions (via Yoga plugin)
 - **graphql-scalars** - Extended scalar types (DateTime, JSON)
 - **ioredis** - Redis client with automatic fallback to memory cache
 - **Zod** - Runtime validation for environment variables
@@ -31,9 +31,10 @@ Build a responsive web dashboard that helps commuters track Bus 51B in real-time
 
 - **Vite** - Fast build tool and frontend server
 - **React 19** - UI framework
-- **Apollo Client** - GraphQL client with subscription support
+- **urql** - Lightweight GraphQL client with SSE subscription support
+- **Tailwind CSS v4** - Utility-first styling with the `@tailwindcss/vite` plugin
 - **Leaflet/Mapbox** - Interactive map visualization
-- **Tailwind CSS** - Utility-first styling
+- **TypeScript** - Type-safe components and GraphQL hooks
 
 ### Data Source
 
@@ -101,7 +102,7 @@ Build a responsive web dashboard that helps commuters track Bus 51B in real-time
                │ GraphQL over HTTP/SSE
 ┌──────────────▼──────────────┐
 │ React client (work in prog.)│
-│ future map + dashboard UI   │
+│ dashboard + map UI          │
 └─────────────────────────────┘
 ```
 
@@ -136,7 +137,7 @@ AC Transit uses two different identifier systems for bus stops, and the naming i
 **Critical Integration Note**:
 
 - GTFS-Realtime predictions use actual `stop_id` values
-- AC Transit REST API predictions use `stop_code` values but confusingly labels them as "StopId/stpid"
+- AC Transit REST API predictions use `stop_code` values but confusingly label them as "StopId/stpid"
 - The backend must map between these identifiers using GTFS static data (stops.txt) which contains both fields
 - When the AC Transit API returns "StopId": "55555", this is actually the stop_code, not the GTFS stop_id
 
@@ -189,7 +190,7 @@ GTFS_REALTIME_API_BASE_URL=https://api.actransit.org/transit/gtfsrt
 
 # frontend/.env
 VITE_GRAPHQL_HTTP_URL=http://localhost:4000/graphql
-VITE_GRAPHQL_WS_URL=ws://localhost:4000/graphql
+VITE_GRAPHQL_SSE_URL=http://localhost:4000/graphql
 ```
 
 > **Note**: The backend will validate all environment variables on startup using Zod.
@@ -420,10 +421,11 @@ where-is-51b/
 │   └── tsconfig.json
 ├── frontend/
 │   ├── src/
+│   │   ├── components/
+│   │   │   └── SystemTime.tsx
 │   │   ├── App.tsx
-│   │   ├── App.css
-│   │   ├── main.tsx
 │   │   ├── index.css
+│   │   ├── main.tsx
 │   │   └── config/
 │   │       └── bus-stops.json
 │   ├── package.json

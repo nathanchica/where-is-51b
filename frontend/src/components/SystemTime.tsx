@@ -77,11 +77,16 @@ export function SystemTimeCard() {
         });
     }, [displayTime]);
 
-    let syncStatus: string | null = null;
-    if (lastSyncAt) {
+    const createSyncStatusText = (): string | null => {
+        if (!lastSyncAt) {
+            return null;
+        }
+
         const deltaSeconds = Math.max(0, Math.round((Date.now() - lastSyncAt) / 1000));
-        syncStatus = deltaSeconds <= 1 ? 'Synced just now' : `Synced ${deltaSeconds} seconds ago`;
-    }
+        return deltaSeconds <= 1 ? 'Synced just now' : `Synced ${deltaSeconds} seconds ago`;
+    };
+
+    const syncStatus = createSyncStatusText();
 
     if (error) {
         return (
