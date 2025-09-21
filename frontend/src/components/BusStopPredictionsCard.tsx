@@ -1,6 +1,7 @@
 import { gql, useSubscription } from 'urql';
 
 import BusStopCardHeader from './BusStopCardHeader';
+import Card from './Card';
 
 const BUS_STOP_PREDICTIONS_SUBSCRIPTION = gql`
     subscription BusStopPredictions($routeId: String!, $direction: BusDirection!, $stopCode: String!) {
@@ -87,8 +88,7 @@ function BusStopPredictionsCard({ routeId, direction, stopCode }: BusStopPredict
         : {};
 
     return (
-        <section
-            className="rounded-xl border border-slate-800 bg-slate-900/80 p-6"
+        <Card
             aria-label={`${directionLabel} arrivals for route ${routeId} at stop ${stopCode}`}
             {...accessibilityProps}
         >
@@ -137,7 +137,7 @@ function BusStopPredictionsCard({ routeId, direction, stopCode }: BusStopPredict
                                   </div>
                                   <div className="text-right text-sm text-slate-300">
                                       <p className="font-medium">Vehicle {prediction.vehicleId || '?'}</p>
-                                      <p className="text-slate-400">ETA {formattedArrival}</p>
+                                      <p className="text-slate-400 md:text-base text-xs">ETA {formattedArrival}</p>
                                       {distance ? <p className="text-xs text-slate-500">{distance}</p> : null}
                                   </div>
                               </article>
@@ -145,7 +145,7 @@ function BusStopPredictionsCard({ routeId, direction, stopCode }: BusStopPredict
                       })
                     : null}
             </div>
-        </section>
+        </Card>
     );
 }
 
