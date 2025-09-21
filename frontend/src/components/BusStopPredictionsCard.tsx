@@ -1,5 +1,7 @@
 import { gql, useSubscription } from 'urql';
 
+import BusStopCardHeader from './BusStopCardHeader';
+
 const BUS_STOP_PREDICTIONS_SUBSCRIPTION = gql`
     subscription BusStopPredictions($routeId: String!, $direction: BusDirection!, $stopCode: String!) {
         busStopPredictions(routeId: $routeId, direction: $direction, stopCode: $stopCode) {
@@ -90,13 +92,10 @@ function BusStopPredictionsCard({ routeId, direction, stopCode }: BusStopPredict
             aria-label={`${directionLabel} arrivals for route ${routeId} at stop ${stopCode}`}
             {...accessibilityProps}
         >
-            <header className="flex flex-wrap items-baseline justify-between gap-2">
-                <div>
-                    <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-300">
-                        {stopCode} - {directionLabel} arrivals
-                    </p>
-                </div>
-            </header>
+            <BusStopCardHeader busStopCode={stopCode} />
+            <p className="mt-3 text-xs font-semibold uppercase tracking-[0.3em] text-slate-300">
+                {directionLabel} arrivals
+            </p>
 
             {error ? (
                 <div
