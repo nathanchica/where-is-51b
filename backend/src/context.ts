@@ -1,6 +1,6 @@
 import actRealtime from './services/actRealtime.js';
-import gtfsRealtime from './services/gtfsRealtime.js';
 import { ACTRealtimeServiceType } from './services/actRealtime.js';
+import gtfsRealtime from './services/gtfsRealtime.js';
 import { GTFSRealtimeServiceType } from './services/gtfsRealtime.js';
 
 export type Context = {

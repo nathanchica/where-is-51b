@@ -1,13 +1,13 @@
 import { GraphQLError } from 'graphql';
-import config from '../../utils/config.js';
 
 import { Context } from '../../context.js';
 import {
     createBusStopPredictionsFromActRealtime,
     createBusStopPredictionsFromGtfsFeed,
 } from '../../formatters/busStopPrediction.js';
-import { DataSource } from '../root/root.resolver.js';
+import config from '../../utils/config.js';
 import { BusDirection } from '../busPosition/busPosition.resolver.js';
+import { DataSource } from '../root/root.resolver.js';
 
 type BusStopPredictionsArgs = {
     routeId: string;

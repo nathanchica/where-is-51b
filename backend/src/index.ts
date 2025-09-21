@@ -1,22 +1,22 @@
 import { createServer } from 'node:http';
-import { createYoga } from 'graphql-yoga';
-import { useGraphQLSSE } from '@graphql-yoga/plugin-graphql-sse';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { loadFilesSync } from '@graphql-tools/load-files';
 import { mergeTypeDefs, mergeResolvers } from '@graphql-tools/merge';
 import { makeExecutableSchema } from '@graphql-tools/schema';
+import { useGraphQLSSE } from '@graphql-yoga/plugin-graphql-sse';
 import { DateTimeResolver, JSONResolver } from 'graphql-scalars';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import config from './utils/config.js';
-import { createContext, Context } from './context.js';
+import { createYoga } from 'graphql-yoga';
 
-// Import individual resolvers
-import rootResolvers from './schema/root/root.resolver.js';
+import { createContext, Context } from './context.js';
 import acTransitResolvers from './schema/acTransit/acTransit.resolver.js';
+import { acTransitAlertResolver } from './schema/acTransitAlert/acTransitAlert.resolver.js';
 import busPositionResolvers from './schema/busPosition/busPosition.resolver.js';
 import busStopResolvers from './schema/busStop/busStop.resolver.js';
 import busStopPredictionsResolvers from './schema/busStopPredictions/busStopPredictions.resolver.js';
-import { acTransitAlertResolver } from './schema/acTransitAlert/acTransitAlert.resolver.js';
+import rootResolvers from './schema/root/root.resolver.js';
+import config from './utils/config.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);

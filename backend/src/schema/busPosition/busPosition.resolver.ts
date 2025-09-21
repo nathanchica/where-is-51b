@@ -1,9 +1,9 @@
 import { GraphQLError } from 'graphql';
 
+import { Context } from '../../context.js';
+import { createBusPositionsFromGtfsFeed, createBusPositionsFromActRealtime } from '../../formatters/busPosition.js';
 import config from '../../utils/config.js';
 import { DataSource } from '../root/root.resolver.js';
-import { Context } from '../../context.js';
-import { createBusPositionsFromGtfsFeed, createBusPositionsFromActRealtime } from '../../formatters/busPosition';
 
 export type BusDirection = 'INBOUND' | 'OUTBOUND';
 

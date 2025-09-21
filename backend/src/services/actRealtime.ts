@@ -1,6 +1,7 @@
 import fetch from 'node-fetch';
-import config from '../utils/config.js';
+
 import { getCachedOrFetch } from '../utils/cache.js';
+import config from '../utils/config.js';
 
 export type BusStopProfileRaw = {
     stpid: string; // stop code (5-digit)

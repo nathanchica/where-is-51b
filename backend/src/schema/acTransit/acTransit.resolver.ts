@@ -1,7 +1,7 @@
 import { GraphQLError } from 'graphql';
 
+import { Context } from '../../context.js';
 import config from '../../utils/config.js';
-import { Context } from '../../context';
 
 const resolvers = {
     Subscription: {

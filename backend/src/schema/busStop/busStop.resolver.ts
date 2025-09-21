@@ -1,5 +1,5 @@
-import { createBusStopProfile, BusStopProfile } from '../../formatters/busStop.js';
 import { Context } from '../../context.js';
+import { createBusStopProfile, BusStopProfile } from '../../formatters/busStop.js';
 import { ACTRealtimeServiceType } from '../../services/actRealtime.js';
 
 export type BusStopParent = {
