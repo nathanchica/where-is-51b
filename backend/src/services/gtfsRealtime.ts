@@ -1,8 +1,8 @@
-import fetch from 'node-fetch';
 import GtfsRealtimeBindings, { type transit_realtime } from 'gtfs-realtime-bindings';
+import fetch from 'node-fetch';
 
-import config from '../utils/config.js';
 import { getCachedOrFetch } from '../utils/cache.js';
+import config from '../utils/config.js';
 
 // Use the protobuf decoder from the default export
 const { transit_realtime: rt } = GtfsRealtimeBindings;

@@ -44,9 +44,9 @@ Build a responsive web dashboard that helps commuters track Bus 51B in real-time
 
 ### MVP (Phase 1)
 
-- [ ] Display real-time arrival predictions for 2 pre-selected stops
-- [ ] Show bus direction (inbound/outbound)
-- [ ] Auto-refresh every 15 seconds
+- [x] Display real-time arrival predictions for 2 pre-selected stops
+- [x] Show bus direction (inbound/outbound)
+- [x] Auto-refresh every 15 seconds
 - [ ] Simple, clean UI with countdown timers
 - [ ] Mobile-responsive design
 
@@ -66,36 +66,36 @@ Build a responsive web dashboard that helps commuters track Bus 51B in real-time
 - [ ] Historical data/patterns
 - [ ] PWA with offline support
 
-## 🏗 Architecture
+## Architecture
 
 ```
-┌─────────────────┐
-│   AC Transit    │
-│   GTFS APIs     │
-└────────┬────────┘
-         │ HTTP Polling
-         │ (every 15s)
-┌────────▼────────┐
-│  GraphQL Yoga   │
-│     Server      │
-│                 │
-│ - Fetches data  │
-│ - Parses GTFS   │
-│ - Filters 51B   │
-│ - Manages subs  │
-└────────┬────────┘
-         │ WebSocket
-         │ (GraphQL Subscriptions)
-┌────────▼────────┐
-│  React Client   │
-│  Apollo Client  │
-│                 │
-│ - Subscribe to  │
-│   updates       │
-│ - Display UI    │
-│ - Map view      │
-└─────────────────┘
+┌─────────────────────────────┐
+│       AC Transit APIs       │
+│  actrealtime JSON | gtfsrt  │
+└──────────────┬──────────────┘
+               │ HTTP polling
+      ┌────────▼─────────────┐
+      │ GraphQL Yoga         │
+      │ services:            │
+      │  • actRealtime       │
+      │  • gtfsRealtime      │
+      │ formatters:          │
+      │  • busPosition       │
+      │  • busStop           │
+      │  • busStopPrediction │
+      │ cache: Redis / mem   │
+      └────────┬─────────────┘
+               │ GraphQL over HTTP/SSE
+┌──────────────▼──────────────┐
+│ React client (work in prog.)│
+│ future map + dashboard UI   │
+└─────────────────────────────┘
 ```
+
+The backend fetches from both ACT RealTime (JSON) and GTFS-Realtime (protobuf) feeds based on client requests,
+normalizes the data through dedicated formatter utilities, and serves consistent GraphQL types.
+
+Subscriptions stream over GraphQL Yoga using Server‑Sent Events.
 
 ## API Integration
 
@@ -116,6 +116,29 @@ Build a responsive web dashboard that helps commuters track Bus 51B in real-time
 - **Timestamp Format**: Uses Long (64-bit integers) from protobuf, converted to Date objects
 - **Direction**: `directionId` 0 = Outbound, 1 = Inbound
 - **Multilingual Alerts**: Alerts include Spanish/Chinese translations separated by `---`
+
+### Stop Identifier Confusion (Important!)
+
+AC Transit uses two different identifier systems for bus stops, and the naming is confusing:
+
+1. **stop_id** (GTFS Standard)
+    - Sequential internal identifier (e.g., "1234", "5678")
+    - Used in GTFS-Realtime feeds (protobuf)
+    - Used in GTFS static data (stops.txt)
+    - Primary key in the GTFS ecosystem
+
+2. **stop_code** (Public-facing)
+    - 5-digit code displayed on physical bus stop signs (e.g., "55555", "58883")
+    - What passengers see and use to identify stops
+    - Human-readable and consistent across systems
+    - **CONFUSING**: AC Transit's proprietary REST API calls this field "StopId" or "stpid" even though it's actually the stop_code!
+
+**Critical Integration Note**:
+
+- GTFS-Realtime predictions use actual `stop_id` values
+- AC Transit REST API predictions use `stop_code` values but confusingly labels them as "StopId/stpid"
+- The backend must map between these identifiers using GTFS static data (stops.txt) which contains both fields
+- When the AC Transit API returns "StopId": "55555", this is actually the stop_code, not the GTFS stop_id
 
 ## Getting Started
 
@@ -150,10 +173,19 @@ AC_TRANSIT_TOKEN=your_token_here           # REQUIRED - Get from AC Transit Deve
 # Optional - sensible defaults are provided
 PORT=4000                                  # Default: 4000
 NODE_ENV=development                       # Default: development
+FRONTEND_URL=http://localhost:5173         # Default: 5173 (used for CORS)
 POLLING_INTERVAL=15000                     # Default: 15000ms (15 seconds)
 ACTRANSITALERTS_POLLING_INTERVAL=60000     # Default: 60000ms (60 seconds)
 REDIS_URL=redis://localhost:6379           # Optional, falls back to memory cache
 ENABLE_CACHE=true                          # Default: true
+CACHE_TTL_VEHICLE_POSITIONS=10             # Seconds (default: 10)
+CACHE_TTL_PREDICTIONS=15                   # Seconds (default: 15)
+CACHE_TTL_SERVICE_ALERTS=300               # Seconds (default: 300)
+CACHE_TTL_BUS_STOP_PROFILES=86400          # Seconds (default: 86400)
+CACHE_CLEANUP_THRESHOLD=100                # Default: 100 cached entries
+AC_TRANSIT_API_BASE_URL=https://api.actransit.org/transit
+ACT_REALTIME_API_BASE_URL=https://api.actransit.org/transit/actrealtime
+GTFS_REALTIME_API_BASE_URL=https://api.actransit.org/transit/gtfsrt
 
 # frontend/.env
 VITE_GRAPHQL_HTTP_URL=http://localhost:4000/graphql
@@ -163,15 +195,7 @@ VITE_GRAPHQL_WS_URL=ws://localhost:4000/graphql
 > **Note**: The backend will validate all environment variables on startup using Zod.
 > If validation fails, you'll see clear error messages indicating which variables are misconfigured.
 
-4. Test the AC Transit API connection
-
-```bash
-cd backend
-npx tsx src/services/testFetch.ts  # Test raw API fetching
-npx tsx src/services/testParser.ts # Test data parsing
-```
-
-5. Start development servers concurrently
+4. Start development servers concurrently
 
 ```bash
 npm run dev
@@ -180,35 +204,47 @@ npm run dev
 ## GraphQL Schema
 
 ```graphql
+scalar DateTime
+scalar JSON
+
+enum DataSource {
+    ACT_REALTIME # AC Transit proprietary REST API (JSON)
+    GTFS_REALTIME # GTFS-Realtime trip updates feed (protobuf)
+}
+
+enum BusDirection {
+    INBOUND # Toward Rockridge BART
+    OUTBOUND # Toward Berkeley Amtrak
+}
+
 type BusPosition {
     vehicleId: String!
     routeId: String!
-    isOutbound: Boolean! # True if heading away from downtown
     latitude: Float!
     longitude: Float!
     heading: Float
     speed: Float
-    timestamp: DateTime! # ISO 8601 DateTime
+    timestamp: DateTime!
     tripId: String
     stopSequence: Int
 }
 
-type StopPrediction {
-    stopId: String!
-    stopName: String!
-    direction: String!
-    arrivals: [Arrival!]!
+type BusStop {
+    id: String!
+    code: String!
+    name: String!
     latitude: Float!
     longitude: Float!
 }
 
-type Arrival {
+type BusStopPrediction {
     vehicleId: String!
     tripId: String!
     arrivalTime: DateTime!
     departureTime: DateTime!
     minutesAway: Int!
     isOutbound: Boolean!
+    distanceToStopFeet: Int
 }
 
 type ACTransitAlert {
@@ -230,15 +266,27 @@ enum ACTransitAlertSeverity {
 
 type Query {
     health: String!
-    busPositions(routeId: String!): [BusPosition!]!
-    stopPredictions(routeId: String!, stopIds: [String!]!): [StopPrediction!]!
+    busPositions(routeId: String!, source: DataSource = ACT_REALTIME): [BusPosition!]!
+    busStop(busStopCode: String!): BusStop
+    busStopPredictions(
+        routeId: String!
+        stopCode: String!
+        direction: BusDirection!
+        source: DataSource = ACT_REALTIME
+    ): [BusStopPrediction!]!
     acTransitAlerts(routeId: String): [ACTransitAlert!]!
 }
 
 type Subscription {
     ping: String!
-    busPositions(routeId: String!): [BusPosition!]!
-    stopPredictions(routeId: String!, stopIds: [String!]!): [StopPrediction!]!
+    systemTime: DateTime!
+    busPositions(routeId: String!, source: DataSource = ACT_REALTIME): [BusPosition!]!
+    busStopPredictions(
+        routeId: String!
+        stopCode: String!
+        direction: BusDirection!
+        source: DataSource = ACT_REALTIME
+    ): [BusStopPrediction!]!
     acTransitAlerts(routeId: String): [ACTransitAlert!]!
 }
 ```
@@ -257,22 +305,29 @@ const envSchema = z.object({
     // Server Configuration
     PORT: z.coerce.number().min(1).max(65535).default(4000),
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+    FRONTEND_URL: z.url().default('http://localhost:5173'),
 
-    // API Configuration
-    AC_TRANSIT_TOKEN: z.string().default(''),
+    // Polling configuration
     POLLING_INTERVAL: z.coerce.number().min(5000).max(300000).default(15000),
     ACTRANSITALERTS_POLLING_INTERVAL: z.coerce.number().min(30000).max(600000).default(60000),
 
-    // Cache Configuration
-    REDIS_URL: z.string().optional(), // Optional - falls back to memory cache
+    // AC Transit auth & base URLs
+    AC_TRANSIT_TOKEN: z.string().default(''),
+    AC_TRANSIT_API_BASE_URL: z.url().default('https://api.actransit.org/transit'),
+    ACT_REALTIME_API_BASE_URL: z.url().default('https://api.actransit.org/transit/actrealtime'),
+    GTFS_REALTIME_API_BASE_URL: z.url().default('https://api.actransit.org/transit/gtfsrt'),
+
+    // Cache configuration
+    REDIS_URL: z.string().optional(),
     ENABLE_CACHE: z
         .enum(['true', 'false'])
         .default('true')
         .transform((val) => val === 'true'),
-
-    // URLs with validation
-    FRONTEND_URL: z.url().default('http://localhost:5173'),
-    AC_TRANSIT_VEHICLE_POSITIONS_URL: z.url().default('...'),
+    CACHE_TTL_VEHICLE_POSITIONS: z.coerce.number().min(5).max(300).default(10),
+    CACHE_TTL_PREDICTIONS: z.coerce.number().min(5).max(300).default(15),
+    CACHE_TTL_SERVICE_ALERTS: z.coerce.number().min(60).max(3600).default(300),
+    CACHE_TTL_BUS_STOP_PROFILES: z.coerce.number().min(3600).max(604800).default(86400),
+    CACHE_CLEANUP_THRESHOLD: z.coerce.number().min(50).max(1000).default(100),
 });
 ```
 
@@ -304,33 +359,36 @@ const isDev = config.NODE_ENV === 'development'; // boolean
 
 ## Service Architecture
 
-The backend implements a clean layered architecture:
+The backend implements a layered approach that separates data fetching from transformation:
 
 ```
-AC Transit GTFS-RT API
+AC Transit APIs (actrealtime JSON / gtfsrt protobuf)
          │
          ▼
-┌─────────────────────┐
-│  acTransit.ts       │ ← Service Layer
-│  - Fetches binary   │
-│  - Handles auth     │
-│  - Basic filtering  │
-└─────────┬───────────┘
+┌─────────────────────────────┐
+│ Services                    │
+│  actRealtime.ts             │ ← batched REST fetching & caching
+│  gtfsRealtime.ts            │ ← protobuf fetch + filtering + caching
+└─────────┬───────────────────┘
          ▼
-┌─────────────────────┐
-│  gtfsParser.ts      │ ← Parser Layer
-│  - Type transforms  │
-│  - English extract  │
-│  - Schema mapping   │
-└─────────┬───────────┘
+┌─────────────────────────────┐
+│ Formatters                  │
+│  busPosition.ts             │ ← normalize raw payloads
+│  busStop.ts                 │
+│  busStopPrediction.ts       │
+└─────────┬───────────────────┘
          ▼
-┌─────────────────────┐
-│  GraphQL Resolvers  │ ← API Layer
-│  - Query handling   │
-│  - Subscriptions    │
-│  - Caching          │
-└─────────────────────┘
+┌─────────────────────────────┐
+│ GraphQL resolvers           │
+│  schema/*                   │ ← APIs & subscriptions
+└─────────────────────────────┘
 ```
+
+### Data flow highlights
+
+- **Batched requests**: `actRealtime.fetchBusStopProfiles` and `fetchBusStopPredictions` bundle up to 10 stop codes per call and cache results.
+- **Formatter layer**: Raw JSON/protobuf payloads are converted into consistent GraphQL-friendly objects before hitting resolvers.
+- **Resolver hydration**: Bus stop resolvers lazily fetch additional metadata when a field isn’t already provided by upstream formatters.
 
 ## Project Structure
 
@@ -338,47 +396,39 @@ AC Transit GTFS-RT API
 where-is-51b/
 ├── backend/
 │   ├── src/
-│   │   ├── index.ts           # Server entry point
-│   │   ├── schema/           # GraphQL schema definitions
-│   │   │   ├── root/
-│   │   │   │   ├── root.graphql
-│   │   │   │   └── root.resolver.ts
+│   │   ├── context.ts
+│   │   ├── formatters/
+│   │   │   ├── busPosition.ts
+│   │   │   ├── busStop.ts
+│   │   │   └── busStopPrediction.ts
+│   │   ├── index.ts
+│   │   ├── schema/
+│   │   │   ├── acTransit/
+│   │   │   ├── acTransitAlert/
 │   │   │   ├── busPosition/
-│   │   │   │   ├── busPosition.graphql
-│   │   │   │   └── busPosition.resolver.ts
-│   │   │   ├── stopPrediction/
-│   │   │   │   ├── stopPrediction.graphql
-│   │   │   │   └── stopPrediction.resolver.ts
-│   │   │   └── acTransitAlert/
-│   │   │       ├── acTransitAlert.graphql
-│   │   │       └── acTransitAlert.resolver.ts
+│   │   │   ├── busStop/
+│   │   │   ├── busStopPredictions/
+│   │   │   └── root/
 │   │   ├── services/
-│   │   │   ├── acTransit.ts   # AC Transit API client (fetches GTFS-RT feeds)
-│   │   │   └── gtfsParser.ts  # GTFS parser (transforms protobuf to GraphQL types)
+│   │   │   ├── actRealtime.ts
+│   │   │   └── gtfsRealtime.ts
 │   │   └── utils/
-│   │       ├── config.ts      # Zod env validation & config
-│   │       └── cache.ts       # Caching logic
+│   │       ├── cache.ts
+│   │       ├── config.ts
+│   │       └── datetime.ts
 │   ├── package.json
-│   ├── tsconfig.json
-│   └── .env
+│   └── tsconfig.json
 ├── frontend/
 │   ├── src/
-│   │   ├── main.tsx          # React entry point
-│   │   ├── App.tsx           # Main app component
-│   │   ├── components/
-│   │   │   ├── Dashboard.tsx # Main dashboard
-│   │   │   ├── ArrivalCard.tsx
-│   │   │   ├── BusMap.tsx
-│   │   │   └── DirectionToggle.tsx
-│   │   ├── hooks/
-│   │   │   └── useBusTracking.ts
-│   │   ├── graphql/
-│   │   │   ├── client.ts     # Apollo client setup
-│   │   │   └── queries.ts    # GraphQL queries/subscriptions
-│   │   └── styles/
+│   │   ├── App.tsx
+│   │   ├── App.css
+│   │   ├── main.tsx
+│   │   ├── index.css
+│   │   └── config/
+│   │       └── bus-stops.json
 │   ├── package.json
-│   ├── vite.config.js
-│   └── .env
+│   └── vite.config.ts
+├── package.json
 └── README.md
 ```
 
@@ -402,19 +452,19 @@ The backend implements a **hybrid caching system** that automatically adapts to 
 ```typescript
 // backend/src/utils/cache.ts
 class HybridCache {
-    // Attempts Redis connection if REDIS_URL is set
-    // Falls back to Map-based memory cache if Redis unavailable
-    // Seamless operation in both environments
+    // Uses Redis when configured, otherwise stores entries in-memory
 }
 
-// Usage in services
-import { cache, CACHE_KEYS, CACHE_TTL } from './utils/cache.js';
+// Services call the helper so cache lookups and refreshes stay consistent
+import { getCachedOrFetch } from '../utils/cache.js';
+import config from '../utils/config.js';
 
-const data = await cache.get(CACHE_KEYS.VEHICLE_POSITIONS('51B'));
-if (!data) {
-    const fresh = await fetchFromAPI();
-    await cache.set(key, fresh, CACHE_TTL.VEHICLE_POSITIONS);
-}
+const cacheKey = `vehicle-positions:${routeId ?? 'all'}`;
+const positions = await getCachedOrFetch(
+    cacheKey,
+    () => fetchVehiclePositionsFromApi(routeId),
+    config.CACHE_TTL_VEHICLE_POSITIONS
+);
 ```
 
 ### Cache TTLs
@@ -422,6 +472,8 @@ if (!data) {
 - **Vehicle Positions**: 10 seconds (real-time data)
 - **Trip Updates**: 15 seconds (predictions)
 - **Service Alerts**: 5 minutes (rarely changes)
+- **Bus Stop Profiles**: 24 hours (metadata rarely changes)
+- **Bus Stop Predictions**: 30 seconds (real-time predictions)
 
 ## Performance Considerations
 

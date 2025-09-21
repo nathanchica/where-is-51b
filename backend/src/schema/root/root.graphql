@@ -9,6 +9,21 @@ JSON scalar type for arbitrary JSON data
 scalar JSON
 
 """
+Enum for data sources. Mostly for comparison purposes, the data should be identical.
+"""
+enum DataSource {
+    """
+    GTFS-Realtime standard trip updates feed (protobuf format)
+    """
+    GTFS_REALTIME
+
+    """
+    AC Transit proprietary real-time API (JSON format)
+    """
+    ACT_REALTIME
+}
+
+"""
 Root query type
 """
 type Query {

@@ -1,0 +1,6 @@
+extend type Subscription {
+    """
+    Subscribe to current system time and data of AC Transit system
+    """
+    systemTime: DateTime!
+}

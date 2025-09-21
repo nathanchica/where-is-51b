@@ -3,6 +3,7 @@ import tseslint from '@typescript-eslint/eslint-plugin';
 import tsParser from '@typescript-eslint/parser';
 import reactPlugin from 'eslint-plugin-react';
 import reactHooksPlugin from 'eslint-plugin-react-hooks';
+import importPlugin from 'eslint-plugin-import';
 import prettierConfig from 'eslint-config-prettier';
 
 export default [
@@ -75,6 +76,7 @@ export default [
             '@typescript-eslint': tseslint,
             react: reactPlugin,
             'react-hooks': reactHooksPlugin,
+            import: importPlugin,
         },
         rules: {
             ...tseslint.configs.recommended.rules,
@@ -84,6 +86,17 @@ export default [
             'react/prop-types': 'off',
             '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
             'no-console': 'off',
+            'import/order': [
+                'warn',
+                {
+                    groups: ['builtin', 'external', 'internal', 'sibling', 'parent', 'index'],
+                    'newlines-between': 'always',
+                    alphabetize: {
+                        order: 'asc',
+                        caseInsensitive: false,
+                    },
+                },
+            ],
         },
         settings: {
             react: { version: 'detect' },
@@ -96,6 +109,15 @@ export default [
         rules: {
             'react-hooks/rules-of-hooks': 'off',
             'react-hooks/exhaustive-deps': 'off',
+            'import/extensions': [
+                'error',
+                'ignorePackages',
+                {
+                    js: 'always',
+                    ts: 'never',
+                    tsx: 'never',
+                },
+            ],
         },
     },
 ];

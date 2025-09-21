@@ -1,0 +1,42 @@
+"""
+Represents a bus stop in the transit system
+"""
+type BusStop {
+    """
+    GTFS stop identifier (sequential ID used in GTFS feeds, e.g., "1234")
+    """
+    id: String!
+
+    """
+    Public stop code (5-digit code on physical bus stop signs, e.g., "55555")
+    Note: AC Transit's API confusingly calls this "StopId" but it's the stop_code
+    """
+    code: String!
+
+    """
+    Human-readable stop name
+    """
+    name: String!
+
+    """
+    Latitude of the stop location
+    """
+    latitude: Float!
+
+    """
+    Longitude of the stop location
+    """
+    longitude: Float!
+}
+
+extend type Query {
+    """
+    Look up a single bus stop by its public stop code (5-digit code on the sign)
+    """
+    busStop(
+        """
+        Public stop code to look up (e.g., "55555")
+        """
+        busStopCode: String!
+    ): BusStop
+}
