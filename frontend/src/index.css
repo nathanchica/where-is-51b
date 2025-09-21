@@ -9,3 +9,33 @@
         @apply min-h-screen bg-slate-950 text-slate-100 antialiased;
     }
 }
+
+@layer utilities {
+    .shimmer {
+        position: relative;
+        overflow: hidden;
+        background-color: rgb(30 41 59 / 0.6);
+    }
+
+    .shimmer::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        transform: translateX(-100%);
+        will-change: transform;
+        background-image: linear-gradient(90deg, transparent, rgb(148 163 184 / 0.35), transparent);
+        animation: shimmer-slide 1.5s infinite;
+    }
+}
+
+@keyframes shimmer-slide {
+    100% {
+        transform: translateX(100%);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .shimmer::after {
+        animation: none;
+    }
+}
