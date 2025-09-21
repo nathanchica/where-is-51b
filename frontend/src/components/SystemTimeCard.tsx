@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { gql, useSubscription } from 'urql';
 
+import Card from './Card';
 import LiveRelativeTime from './LiveRelativeTime';
 
 const SYSTEM_TIME_SUBSCRIPTION = gql`
@@ -81,18 +82,22 @@ function SystemTimeCard() {
 
     if (error) {
         return (
-            <div className="rounded-lg border border-red-500/60 bg-red-500/10 p-4 text-sm text-red-200" role="alert">
-                <p className="font-medium">Subscription error</p>
-                <p>{error.message}</p>
-            </div>
+            <Card aria-label="System time">
+                <div
+                    className="rounded-lg border border-red-500/60 bg-red-500/10 p-4 text-sm text-red-200"
+                    role="alert"
+                >
+                    <p className="font-medium">Subscription error</p>
+                    <p>{error.message}</p>
+                </div>
+            </Card>
         );
     }
 
     const isLoading = !displayTime;
 
     return (
-        <section
-            className="rounded-xl border border-slate-800 bg-slate-900/80 p-6"
+        <Card
             aria-label="System time"
             {...(isLoading ? { role: 'status' as const, 'aria-live': 'polite' as const, 'aria-busy': 'true' } : {})}
         >
@@ -131,7 +136,7 @@ function SystemTimeCard() {
                     <span className="sr-only">Synchronising clock</span>
                 </>
             )}
-        </section>
+        </Card>
     );
 }
 

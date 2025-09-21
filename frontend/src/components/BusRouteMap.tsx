@@ -5,6 +5,7 @@ import { gql, useSubscription } from 'urql';
 
 import 'leaflet/dist/leaflet.css';
 
+import Card from './Card';
 import LiveRelativeTime from './LiveRelativeTime';
 
 import { escapeHtml } from '../utils/escapeHtml';
@@ -180,11 +181,7 @@ function BusRouteMap({ routeId }: BusRouteMapProps) {
         : {};
 
     return (
-        <section
-            className="rounded-xl border border-slate-800 bg-slate-900/80 p-6"
-            aria-label={`Live map for route ${routeId}`}
-            {...accessibilityProps}
-        >
+        <Card aria-label={`Live map for route ${routeId}`} {...accessibilityProps}>
             <header>
                 <p className="text-xs font-semibold uppercase tracking-[0.3em] text-slate-500">Live route map</p>
             </header>
@@ -276,7 +273,7 @@ function BusRouteMap({ routeId }: BusRouteMapProps) {
                     </span>
                 )}
             </footer>
-        </section>
+        </Card>
     );
 }
 
