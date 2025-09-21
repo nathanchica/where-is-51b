@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import { gql, useSubscription } from 'urql';
 
+import LiveRelativeTime from './LiveRelativeTime';
+
 const SYSTEM_TIME_SUBSCRIPTION = gql`
     subscription SystemTime {
         systemTime
@@ -86,12 +88,6 @@ function SystemTimeCard() {
         );
     }
 
-    let syncStatus: string | null = null;
-    if (lastSyncAt) {
-        const deltaSeconds = Math.max(0, Math.round((Date.now() - lastSyncAt) / 1000));
-        syncStatus = deltaSeconds <= 1 ? 'Synced just now' : `Synced ${deltaSeconds} seconds ago`;
-    }
-
     const isLoading = !displayTime;
 
     return (
@@ -111,7 +107,7 @@ function SystemTimeCard() {
                     </>
                 )}
             </div>
-            <div className="mt-2 min-h-5 text-sm text-slate-400">
+            <div className="min-h-5 text-sm text-slate-400">
                 {formattedDate ? (
                     <p>{formattedDate}</p>
                 ) : (
@@ -121,8 +117,14 @@ function SystemTimeCard() {
                     </>
                 )}
             </div>
-            {syncStatus ? (
-                <p className="mt-4 text-xs uppercase tracking-[0.2em] text-slate-500">{syncStatus}</p>
+            {lastSyncAt ? (
+                <footer className="mt-4">
+                    <LiveRelativeTime
+                        timestamp={lastSyncAt}
+                        prefix="Synced"
+                        className="text-xs uppercase tracking-[0.2em] text-slate-500"
+                    />
+                </footer>
             ) : (
                 <>
                     <div className="mt-4 h-3 w-1/3 rounded-md shimmer" aria-hidden="true" />
