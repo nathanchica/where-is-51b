@@ -133,6 +133,7 @@ function BusRouteMap({ routeId }: BusRouteMapProps) {
         query: BUS_POSITIONS_SUBSCRIPTION,
         variables: { routeId },
     });
+    const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
 
     const positions = useMemo(() => {
         if (!data?.busPositions?.length) {
@@ -143,23 +144,6 @@ function BusRouteMap({ routeId }: BusRouteMapProps) {
             (position) => Number.isFinite(position.latitude) && Number.isFinite(position.longitude)
         );
     }, [data?.busPositions]);
-
-    const lastUpdatedTimestamp = useMemo(() => {
-        let latest: number | null = null;
-
-        for (const position of positions) {
-            const timestampMs = new Date(position.timestamp).getTime();
-            if (Number.isNaN(timestampMs)) {
-                continue;
-            }
-
-            if (latest === null || timestampMs > latest) {
-                latest = timestampMs;
-            }
-        }
-
-        return latest;
-    }, [positions]);
 
     const markers = useMemo(
         () =>
@@ -179,6 +163,10 @@ function BusRouteMap({ routeId }: BusRouteMapProps) {
               'aria-busy': 'true' as const,
           }
         : {};
+
+    useEffect(() => {
+        setLastSyncAt(Date.now());
+    }, [positions]);
 
     return (
         <Card aria-label={`Live map for route ${routeId}`} {...accessibilityProps}>
@@ -260,9 +248,9 @@ function BusRouteMap({ routeId }: BusRouteMapProps) {
             </div>
 
             <footer className="mt-4">
-                {lastUpdatedTimestamp ? (
+                {lastSyncAt ? (
                     <LiveRelativeTime
-                        timestamp={lastUpdatedTimestamp}
+                        timestamp={lastSyncAt}
                         prefix="Last update"
                         className="text-xs uppercase tracking-[0.2em] text-slate-500"
                         ariaLive="off"
