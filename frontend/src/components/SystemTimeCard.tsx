@@ -117,7 +117,7 @@ function SystemTimeCard() {
                     <p>{formattedDate}</p>
                 ) : (
                     <>
-                        <div className="h-5 w-2/3 rounded-md shimmer" aria-hidden="true" />
+                        <div className="h-5 mt-1 w-2/3 rounded-md shimmer" aria-hidden="true" />
                         <span className="sr-only">Loading current date</span>
                     </>
                 )}
