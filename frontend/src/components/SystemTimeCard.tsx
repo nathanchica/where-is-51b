@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { gql, useSubscription } from 'urql';
 
 import Card from './Card';
-import LiveRelativeTime from './LiveRelativeTime';
 
 const SYSTEM_TIME_SUBSCRIPTION = gql`
     subscription SystemTime {
@@ -13,6 +12,8 @@ const SYSTEM_TIME_SUBSCRIPTION = gql`
 type SystemTimePayload = {
     systemTime: string;
 };
+
+const DRIFT_THRESHOLD_MS = 15_000;
 
 function SystemTimeCard() {
     const [{ data, error }] = useSubscription<SystemTimePayload>({
@@ -58,11 +59,22 @@ function SystemTimeCard() {
             return;
         }
 
-        const syncInstant = Date.now();
+        const now = Date.now();
+
+        if (syncedTime && lastSyncAt) {
+            const elapsedSinceSync = now - lastSyncAt;
+            const estimatedCurrent = new Date(syncedTime.getTime() + elapsedSinceSync);
+            const discrepancyMs = Math.abs(nextSyncTime.getTime() - estimatedCurrent.getTime());
+
+            if (discrepancyMs <= DRIFT_THRESHOLD_MS) {
+                return;
+            }
+        }
+
         setSyncedTime(nextSyncTime);
-        setLastSyncAt(syncInstant);
+        setLastSyncAt(now);
         setDisplayTime(nextSyncTime);
-    }, [data?.systemTime]);
+    }, [data?.systemTime, syncedTime, lastSyncAt]);
 
     useEffect(() => {
         if (!syncedTime || !lastSyncAt) {
@@ -122,20 +134,6 @@ function SystemTimeCard() {
                     </>
                 )}
             </div>
-            {lastSyncAt ? (
-                <footer className="mt-4">
-                    <LiveRelativeTime
-                        timestamp={lastSyncAt}
-                        prefix="Synced"
-                        className="text-xs uppercase tracking-[0.2em] text-slate-500"
-                    />
-                </footer>
-            ) : (
-                <>
-                    <div className="mt-4 h-3 w-1/3 rounded-md shimmer" aria-hidden="true" />
-                    <span className="sr-only">Synchronising clock</span>
-                </>
-            )}
         </Card>
     );
 }
