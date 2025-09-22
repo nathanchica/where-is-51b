@@ -59,26 +59,16 @@ Build a responsive web dashboard that helps commuters track Bus 51B in real-time
 ### MVP (Phase 1)
 
 - [x] Display real-time arrival predictions for 2 pre-selected stops
-- [x] Show bus direction (inbound/outbound)
+- [x] Show system time from ACT RealTime API
+- [x] Show bus positions (inbound/outbound)
 - [x] Auto-refresh every 15 seconds
-- [ ] Simple, clean UI with countdown timers
-- [ ] Mobile-responsive design
+- [x] Simple, clean UI with countdown timers
+- [x] Mobile-responsive design
 
-### Enhanced (Phase 2)
+### Future (Phase 2)
 
-- [ ] Interactive map showing bus positions
-- [ ] Visual route line on map
-- [ ] Stop markers with click-to-select
-- [ ] Multiple bus tracking (all 51B vehicles)
 - [ ] Service alerts integration
-
-### Future (Phase 3)
-
-- [ ] User preferences (save favorite stops)
-- [ ] Multiple route support
-- [ ] Arrival notifications
-- [ ] Historical data/patterns
-- [ ] PWA with offline support
+- [ ] User preferences (change stops, routes, themes, data source)
 
 ## Architecture
 
