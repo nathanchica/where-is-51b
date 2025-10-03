@@ -1,10 +1,14 @@
 import { gql, useQuery } from 'urql';
 
 const BUS_STOP_CARD_HEADER_QUERY = gql`
-    query BusStopCardHeader($busStopCode: String!) {
-        busStop(busStopCode: $busStopCode) {
-            code
-            name
+    query GetBusStopCardHeaderData($busStopCode: String!) {
+        getTransitSystem(alias: "act") {
+            ... on ACTransitSystem {
+                busStop(busStopCode: $busStopCode) {
+                    code
+                    name
+                }
+            }
         }
     }
 `;
@@ -13,11 +17,13 @@ type BusStopCardHeaderProps = {
     busStopCode: string;
 };
 
-type BusStopCardHeaderData = {
-    busStop: {
-        code: string;
-        name: string;
-    } | null;
+type GetBusStopCardHeaderDataPayload = {
+    getTransitSystem: {
+        busStop: {
+            code: string;
+            name: string;
+        } | null;
+    };
 };
 
 // Matches a bus stop name followed by parenthetical content, e.g. 'Shattuck Sq & Center St (Downtown Berkeley BART)'
@@ -42,12 +48,12 @@ function splitBusStopName(name: string) {
 }
 
 function BusStopCardHeader({ busStopCode }: BusStopCardHeaderProps) {
-    const [{ data, fetching, error }] = useQuery<BusStopCardHeaderData>({
+    const [{ data, fetching, error }] = useQuery<GetBusStopCardHeaderDataPayload>({
         query: BUS_STOP_CARD_HEADER_QUERY,
         variables: { busStopCode },
     });
 
-    const busStop = data?.busStop;
+    const busStop = data?.getTransitSystem?.busStop;
     const showSkeleton = fetching && !busStop;
     const stopCode = busStop?.code ?? busStopCode;
     const nameParts = busStop?.name ? splitBusStopName(busStop.name) : null;

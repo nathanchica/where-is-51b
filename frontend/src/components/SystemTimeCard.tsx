@@ -5,12 +5,12 @@ import Card from './Card';
 
 const SYSTEM_TIME_SUBSCRIPTION = gql`
     subscription SystemTime {
-        systemTime
+        acTransitSystemTime
     }
 `;
 
 type SystemTimePayload = {
-    systemTime: string;
+    acTransitSystemTime: string;
 };
 
 const DRIFT_THRESHOLD_MS = 15_000;
@@ -50,11 +50,11 @@ function SystemTimeCard() {
     }, [displayTime]);
 
     useEffect(() => {
-        if (!data?.systemTime) {
+        if (!data?.acTransitSystemTime) {
             return;
         }
 
-        const nextSyncTime = new Date(data.systemTime);
+        const nextSyncTime = new Date(data.acTransitSystemTime);
         if (Number.isNaN(nextSyncTime.getTime())) {
             return;
         }
@@ -74,7 +74,7 @@ function SystemTimeCard() {
         setSyncedTime(nextSyncTime);
         setLastSyncAt(now);
         setDisplayTime(nextSyncTime);
-    }, [data?.systemTime, syncedTime, lastSyncAt]);
+    }, [data?.acTransitSystemTime, syncedTime, lastSyncAt]);
 
     useEffect(() => {
         if (!syncedTime || !lastSyncAt) {
