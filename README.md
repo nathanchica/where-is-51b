@@ -1,7 +1,5 @@
 # Where is Bus 51B?
 
-### Status: In early development
-
 A real-time dashboard for tracking AC Transit Bus Line 51B using GraphQL subscriptions, providing live bus positions and
 arrival predictions for specific stops.
 
@@ -18,14 +16,7 @@ Build a responsive web dashboard that helps commuters track Bus 51B in real-time
 
 ### Backend
 
-- **GraphQL Yoga** - Lightweight GraphQL server with built-in subscription support
-- **Node.js** - Runtime environment
-- **gtfs-realtime-bindings** - For parsing AC Transit's protobuf data
-- **node-fetch** - HTTP client for API calls
-- **graphql-sse** - Server-Sent Events support for subscriptions (via Yoga plugin)
-- **graphql-scalars** - Extended scalar types (DateTime, JSON)
-- **ioredis** - Redis client with automatic fallback to memory cache
-- **Zod** - Runtime validation for environment variables
+The backend is now in https://github.com/nathanchica/nchica-graph and the backend code in this repo is deprecated.
 
 ### Frontend
 
@@ -53,22 +44,6 @@ Build a responsive web dashboard that helps commuters track Bus 51B in real-time
 3. **GTFS Static** (ZIP file with CSVs)
     - Routes, stops, stop times, shapes
     - Updated ~3 times per year
-
-## Milestones
-
-### MVP (Phase 1)
-
-- [x] Display real-time arrival predictions for 2 pre-selected stops
-- [x] Show system time from ACT RealTime API
-- [x] Show bus positions (inbound/outbound)
-- [x] Auto-refresh every 15 seconds
-- [x] Simple, clean UI with countdown timers
-- [x] Mobile-responsive design
-
-### Future (Phase 2)
-
-- [ ] Service alerts integration
-- [ ] User preferences (change stops, routes, themes, data source)
 
 ## Architecture
 
@@ -190,96 +165,6 @@ VITE_GRAPHQL_SSE_URL=http://localhost:4000/graphql
 
 ```bash
 npm run dev
-```
-
-## GraphQL Schema
-
-```graphql
-scalar DateTime
-scalar JSON
-
-enum DataSource {
-    ACT_REALTIME # AC Transit proprietary REST API (JSON)
-    GTFS_REALTIME # GTFS-Realtime trip updates feed (protobuf)
-}
-
-enum BusDirection {
-    INBOUND # Toward Rockridge BART
-    OUTBOUND # Toward Berkeley Amtrak
-}
-
-type BusPosition {
-    vehicleId: String!
-    routeId: String!
-    latitude: Float!
-    longitude: Float!
-    heading: Float
-    speed: Float
-    timestamp: DateTime!
-    tripId: String
-    stopSequence: Int
-}
-
-type BusStop {
-    id: String!
-    code: String!
-    name: String!
-    latitude: Float!
-    longitude: Float!
-}
-
-type BusStopPrediction {
-    vehicleId: String!
-    tripId: String!
-    arrivalTime: DateTime!
-    departureTime: DateTime!
-    minutesAway: Int!
-    isOutbound: Boolean!
-    distanceToStopFeet: Int
-}
-
-type ACTransitAlert {
-    id: String!
-    headerText: String!
-    descriptionText: String
-    severity: ACTransitAlertSeverity!
-    startTime: DateTime
-    endTime: DateTime
-    affectedRoutes: [String!]!
-    affectedStops: [String!]!
-}
-
-enum ACTransitAlertSeverity {
-    INFO
-    WARNING
-    SEVERE
-}
-
-type Query {
-    health: String!
-    busPositions(routeId: String!, source: DataSource = ACT_REALTIME): [BusPosition!]!
-    busStop(busStopCode: String!): BusStop
-    busStopPredictions(
-        routeId: String!
-        stopCode: String!
-        direction: BusDirection!
-        source: DataSource = ACT_REALTIME
-    ): [BusStopPrediction!]!
-    acTransitAlerts(routeId: String): [ACTransitAlert!]!
-}
-
-type Subscription {
-    ping: String!
-    systemTime: DateTime!
-    busPositions(routeId: String!, source: DataSource = ACT_REALTIME): [BusPosition!]!
-    busStopPredictions(
-        routeId: String!
-        stopCode: String!
-        direction: BusDirection!
-        source: DataSource = ACT_REALTIME
-    ): [BusStopPrediction!]!
-    acTransitAlerts(routeId: String): [ACTransitAlert!]!
-}
 ```
 
 ## Environment Variable Management
