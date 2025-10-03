@@ -10,15 +10,16 @@ import LiveRelativeTime from './LiveRelativeTime';
 
 import { escapeHtml } from '../utils/escapeHtml';
 
-const BUS_POSITIONS_SUBSCRIPTION = gql`
-    subscription BusPositions($routeId: String!) {
-        busPositions(routeId: $routeId) {
+const BUSES_SUBSCRIPTION = gql`
+    subscription BusesByRouteSubscription($routeId: String!) {
+        busesByRoute(routeId: $routeId) {
             vehicleId
-            latitude
-            longitude
-            heading
-            speed
-            timestamp
+            position {
+                latitude
+                longitude
+                heading
+                speed
+            }
         }
     }
 `;
@@ -27,17 +28,20 @@ type BusRouteMapProps = {
     routeId: string;
 };
 
-type BusPosition = {
-    vehicleId: string;
+type Position = {
     latitude: number;
     longitude: number;
     heading: number | null;
     speed: number | null;
-    timestamp: string;
 };
 
-type BusPositionsPayload = {
-    busPositions: BusPosition[];
+type Bus = {
+    vehicleId: string;
+    position: Position;
+};
+
+type BusesByRouteSubscriptionPayload = {
+    busesByRoute: Bus[];
 };
 
 const FALLBACK_CENTER: LatLngExpression = [37.8665, -122.2673];
@@ -46,7 +50,6 @@ const ICON_SIZE: [number, number] = [40, 40];
 const ICON_ANCHOR: [number, number] = [20, 20];
 const TOOLTIP_ANCHOR: [number, number] = [0, -24];
 const VEHICLE_ID_MAX_LENGTH = 6;
-const SPEED_MPS_TO_MPH = 2.23694;
 const MAP_SINGLE_VEHICLE_MIN_ZOOM = 15;
 const MAP_MAX_BOUNDS_ZOOM = 16;
 const MAP_BOUNDS_PADDING = 0.2;
@@ -69,23 +72,7 @@ function createBusMarkerIcon(vehicleId: string | null | undefined): DivIcon {
     });
 }
 
-function formatTimestamp(isoString: string | null) {
-    if (!isoString) {
-        return null;
-    }
-
-    const date = new Date(isoString);
-    if (Number.isNaN(date.getTime())) {
-        return null;
-    }
-
-    return date.toLocaleTimeString(undefined, {
-        hour: 'numeric',
-        minute: '2-digit',
-    });
-}
-
-function AutoFitBounds({ positions }: { positions: BusPosition[] }) {
+function AutoFitBounds({ buses }: { buses: Bus[] }) {
     const map = useMap();
     const [userHasInteracted, setUserHasInteracted] = useState(false);
     const hasFittedView = useRef(false);
@@ -103,7 +90,7 @@ function AutoFitBounds({ positions }: { positions: BusPosition[] }) {
     });
 
     useEffect(() => {
-        if (!positions.length) {
+        if (!buses.length) {
             hasFittedView.current = false;
             return;
         }
@@ -112,46 +99,47 @@ function AutoFitBounds({ positions }: { positions: BusPosition[] }) {
             return;
         }
 
-        if (positions.length === 1) {
-            const [{ latitude, longitude }] = positions;
-            map.setView([latitude, longitude], Math.max(map.getZoom(), MAP_SINGLE_VEHICLE_MIN_ZOOM));
+        if (buses.length === 1) {
+            const [{ position }] = buses;
+            map.setView([position.latitude, position.longitude], Math.max(map.getZoom(), MAP_SINGLE_VEHICLE_MIN_ZOOM));
         } else {
             const bounds = L.latLngBounds(
-                positions.map((position) => [position.latitude, position.longitude] as [number, number])
+                buses.map((bus) => [bus.position.latitude, bus.position.longitude] as [number, number])
             );
             map.fitBounds(bounds.pad(MAP_BOUNDS_PADDING), { maxZoom: MAP_MAX_BOUNDS_ZOOM });
         }
 
         hasFittedView.current = true;
-    }, [map, positions, userHasInteracted]);
+    }, [map, buses, userHasInteracted]);
 
     return null;
 }
 
 function BusRouteMap({ routeId }: BusRouteMapProps) {
-    const [{ data, error, fetching }] = useSubscription<BusPositionsPayload>({
-        query: BUS_POSITIONS_SUBSCRIPTION,
+    const [{ data, error, fetching }] = useSubscription<BusesByRouteSubscriptionPayload>({
+        query: BUSES_SUBSCRIPTION,
         variables: { routeId },
     });
     const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
 
-    const positions = useMemo(() => {
-        if (!data?.busPositions?.length) {
-            return [] as BusPosition[];
+    const buses = useMemo(() => {
+        if (!data?.busesByRoute?.length) {
+            return [] as Bus[];
         }
 
-        return data.busPositions.filter(
-            (position) => Number.isFinite(position.latitude) && Number.isFinite(position.longitude)
+        return data.busesByRoute.filter(
+            ({ position }) => Number.isFinite(position.latitude) && Number.isFinite(position.longitude)
         );
-    }, [data?.busPositions]);
+    }, [data?.busesByRoute]);
 
     const markers = useMemo(
         () =>
-            positions.map((position) => ({
+            buses.map(({ vehicleId, position }) => ({
                 ...position,
-                icon: createBusMarkerIcon(position.vehicleId),
+                vehicleId,
+                icon: createBusMarkerIcon(vehicleId),
             })),
-        [positions]
+        [buses]
     );
 
     const isLoading = fetching && !data;
@@ -166,7 +154,7 @@ function BusRouteMap({ routeId }: BusRouteMapProps) {
 
     useEffect(() => {
         setLastSyncAt(Date.now());
-    }, [positions]);
+    }, [buses]);
 
     return (
         <Card aria-label={`Live map for route ${routeId}`} {...accessibilityProps}>
@@ -192,13 +180,13 @@ function BusRouteMap({ routeId }: BusRouteMapProps) {
                     </>
                 ) : null}
 
-                {!isLoading && positions.length === 0 ? (
+                {!isLoading && buses.length === 0 ? (
                     <div className="rounded-xl border border-slate-800/60 bg-slate-900/60 p-4 text-sm text-slate-300">
                         No active vehicles reported for route {routeId} right now.
                     </div>
                 ) : null}
 
-                {!isLoading && positions.length > 0 ? (
+                {!isLoading && buses.length > 0 ? (
                     <div className="overflow-hidden rounded-xl border border-slate-800/70">
                         <MapContainer
                             center={FALLBACK_CENTER}
@@ -210,32 +198,24 @@ function BusRouteMap({ routeId }: BusRouteMapProps) {
                                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
                                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                             />
-                            <AutoFitBounds positions={positions} />
-                            {markers.map((position) => {
-                                const markerPosition: LatLngExpression = [position.latitude, position.longitude];
-                                const updatedAt = formatTimestamp(position.timestamp);
-                                const speedMph =
-                                    typeof position.speed === 'number'
-                                        ? Math.round(position.speed * SPEED_MPS_TO_MPH)
-                                        : null;
+                            <AutoFitBounds buses={buses} />
+                            {markers.map(({ vehicleId, latitude, longitude, speed, icon }) => {
+                                const markerPosition: LatLngExpression = [latitude, longitude];
 
                                 return (
                                     <Marker
-                                        key={`${position.vehicleId}`}
+                                        key={`${vehicleId}`}
                                         position={markerPosition}
-                                        icon={position.icon}
-                                        alt={`Vehicle ${position.vehicleId || 'unknown'} location marker`}
+                                        icon={icon}
+                                        alt={`Vehicle ${vehicleId || 'unknown'} location marker`}
                                     >
                                         <Tooltip direction="top" offset={[0, -10]} opacity={0.95} permanent={false}>
                                             <div className="space-y-1">
                                                 <p className="font-semibold text-slate-900">
-                                                    Vehicle {position.vehicleId || '—'}
+                                                    Vehicle {vehicleId || '—'}
                                                 </p>
-                                                {updatedAt ? (
-                                                    <p className="text-xs text-slate-700">Updated {updatedAt}</p>
-                                                ) : null}
-                                                {speedMph !== null ? (
-                                                    <p className="text-xs text-slate-700">Speed {speedMph} mph</p>
+                                                {speed !== null ? (
+                                                    <p className="text-xs text-slate-700">Speed {speed} mph</p>
                                                 ) : null}
                                             </div>
                                         </Tooltip>
@@ -248,7 +228,7 @@ function BusRouteMap({ routeId }: BusRouteMapProps) {
             </div>
 
             <footer className="mt-4">
-                {lastSyncAt ? (
+                {!isLoading && buses.length > 0 && lastSyncAt ? (
                     <LiveRelativeTime
                         timestamp={lastSyncAt}
                         prefix="Last update"

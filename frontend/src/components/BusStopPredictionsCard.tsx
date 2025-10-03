@@ -4,15 +4,13 @@ import BusStopCardHeader from './BusStopCardHeader';
 import Card from './Card';
 
 const BUS_STOP_PREDICTIONS_SUBSCRIPTION = gql`
-    subscription BusStopPredictions($routeId: String!, $direction: BusDirection!, $stopCode: String!) {
+    subscription BusStopPredictionsSubscription($routeId: String!, $direction: BusDirection!, $stopCode: String!) {
         busStopPredictions(routeId: $routeId, direction: $direction, stopCode: $stopCode) {
             vehicleId
             tripId
             arrivalTime
-            departureTime
             minutesAway
             isOutbound
-            distanceToStopFeet
         }
     }
 `;
@@ -21,13 +19,11 @@ type BusStopPrediction = {
     vehicleId: string;
     tripId: string;
     arrivalTime: string;
-    departureTime: string;
     minutesAway: number;
     isOutbound: boolean;
-    distanceToStopFeet: number | null;
 };
 
-type BusStopPredictionsPayload = {
+type BusStopPredictionsSubscriptionPayload = {
     busStopPredictions: BusStopPrediction[];
 };
 
@@ -51,22 +47,8 @@ function formatClockTime(isoString: string) {
     });
 }
 
-function formatDistance(feet: number | null) {
-    if (feet === null) {
-        return null;
-    }
-
-    if (feet < 1000) {
-        return `${feet.toLocaleString()} ft away`;
-    }
-
-    const miles = feet / 5280;
-    const rounded = Math.max(0.1, Math.round(miles * 10) / 10);
-    return `${rounded.toFixed(1)} mi away`;
-}
-
 function BusStopPredictionsCard({ routeId, direction, stopCode }: BusStopPredictionsCardProps) {
-    const [{ data, error, fetching }] = useSubscription<BusStopPredictionsPayload>({
+    const [{ data, error, fetching }] = useSubscription<BusStopPredictionsSubscriptionPayload>({
         query: BUS_STOP_PREDICTIONS_SUBSCRIPTION,
         variables: {
             routeId,
@@ -124,7 +106,6 @@ function BusStopPredictionsCard({ routeId, direction, stopCode }: BusStopPredict
                     ? predictions.map((prediction) => {
                           const minutesAway = Math.max(0, prediction.minutesAway);
                           const formattedArrival = formatClockTime(prediction.arrivalTime);
-                          const distance = formatDistance(prediction.distanceToStopFeet);
 
                           return (
                               <article
@@ -138,7 +119,6 @@ function BusStopPredictionsCard({ routeId, direction, stopCode }: BusStopPredict
                                   <div className="text-right text-sm text-slate-300">
                                       <p className="font-medium">Vehicle {prediction.vehicleId || '?'}</p>
                                       <p className="text-slate-400 md:text-base text-xs">ETA {formattedArrival}</p>
-                                      {distance ? <p className="text-xs text-slate-500">{distance}</p> : null}
                                   </div>
                               </article>
                           );
